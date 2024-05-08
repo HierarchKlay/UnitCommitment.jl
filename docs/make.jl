@@ -1,6 +1,22 @@
-using Documenter, UnitCommitment, JuMP
+using Documenter
+using UnitCommitment
+using JuMP
+using Literate
+
+
 
 function make()
+    literate_sources = [
+        "src/tutorials/usage.jl"
+    ]
+    for src in literate_sources
+        Literate.markdown(
+            src,
+            dirname(src);
+            documenter = true,
+            credit = false,
+        )
+    end
     return makedocs(
         sitename = "UnitCommitment.jl",
         pages = [
