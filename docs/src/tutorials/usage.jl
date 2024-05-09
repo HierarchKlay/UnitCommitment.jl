@@ -12,12 +12,12 @@
 
 # ## Solving a benchmark instance
 
-# In this section, we illustrate how to use the package by solving one of the provided benchmark instances. The first step is to import `UnitCommitment` and HiGHS, our MILP solver.
+# We start this tutorial by illustrating how to use UnitCommitment.jl to solve one of the provided benchmark instances. The package contains a large number of deterministic benchmark instances collected from the literature and converted into a common data format, which can be used to evaluate the performance of different solution methods. See [Instances](../guides/instances.md) for more details. The first step is to import `UnitCommitment` and HiGHS.
 
 using HiGHS
 using UnitCommitment
 
-# Next, we use the function `read_benchmark` to read one of the provided benchmark instances. UnitCommitment.jl contains a large number of deterministic benchmark instances collected from the literature and converted into a common data format. See [Instances](../guides/instances.md) for more details.
+# Next, we use the function `read_benchmark` to read the instance.
 
 instance = UnitCommitment.read_benchmark("matpower/case14/2017-01-01");
 
@@ -32,16 +32,22 @@ model = UnitCommitment.build_model(
 
 UnitCommitment.optimize!(model)
 
-# Finally, we export the optimal solution to a JSON file:
+# Finally, we extract the optimal solution from the model:
 
 solution = UnitCommitment.solution(model)
+
+# We can then explore the solution using Julia:
+
+@show solution["Thermal production (MW)"]["g1"]
+
+# Or export the entire solution to a JSON file:
+
 UnitCommitment.write("solution.json", solution)
+
 
 # ## Solving a custom deterministic instance
 
-# In the previous example, we solved an instance provided by the package. To solve your own custom instances, the first step is to create an input file describing your generators, loads and transmission network in JSON format. See [Data Format](../guides/format.md) for a complete description of the data format UC.jl expects. To keep this tutorial self-contained, we will create the input JSON file using Julia, but this step can also be done with a simple text editor.
-
-# First, we define the contents of the file:
+# In the previous example, we solved a benchmark instance provided by the package. To solve a custom instance, the first step is to create an input file describing the list of elements (generators, loads and transmission lines) in the network. See [Data Format](../guides/format.md) for a complete description of the data format UC.jl expects. To keep this tutorial self-contained, we will create the input JSON file using Julia; however, this step can also be done with a simple text editor. First, we define the contents of the file:
 
 json_contents = """
 {
@@ -90,11 +96,25 @@ model = UnitCommitment.build_model(
 );
 UnitCommitment.optimize!(model)
 
+# Finally, we extract and display the solution:
+
+solution = UnitCommitment.solution(model)
+
+#
+
+@show solution["Thermal production (MW)"]["g1"]
+
+#
+
+@show solution["Thermal production (MW)"]["g2"]
+
 # ## Solving a custom stochastic instance
 
-# In addition to deterministic test cases, UnitCommitment.jl can also solve two-stage stochastic instances of the problem. In this section, we demonstrate the most simple form, which builds a single extensive form model containing information for all scenarios. See [Decomposition](../tutorials/decomposition.md) for details on using a scenario decomposition approach with Progressive Hedging.
+# In addition to deterministic test cases, UnitCommitment.jl can also solve two-stage stochastic instances of the problem. In this section, we demonstrate the most simple form, which builds a single (extensive form) model containing information for all scenarios. See [Decomposition](../tutorials/decomposition.md) for more advanced methods.
 
 # First, we need to create one JSON input file for each scenario. Parameters that are allowed to change across scenarios are marked as "uncertain" in the [JSON data format](../guides/format.md) page. It is also possible to specify the name and weight of each scenario, as shown below.
+
+# We start by creating `example_s1.json`, the first scenario file:
 
 json_contents_s1 = """
 {
@@ -133,12 +153,14 @@ open("example_s1.json", "w") do file
     write(file, json_contents_s1)
 end;
 
+# Next, we create `example_s2.json`, the second scenario file:
+
 json_contents_s2 = """
 {
     "Parameters": {
         "Version": "0.4",
         "Time horizon (h)": 4,
-        "Scenario name": "s1",
+        "Scenario name": "s2",
         "Scenario weight": 1.0
     },
     "Buses": {
@@ -170,19 +192,27 @@ open("example_s2.json", "w") do file
     write(file, json_contents_s2)
 end;
 
-# Now that we have our two scenario files, we can read them using `UnitCommitment.read`:
+# Now that we have our two scenario files, we can read them using `UnitCommitment.read`. Note that, instead of a single file, we now provide a list.
 
 instance = UnitCommitment.read(["example_s1.json", "example_s2.json"])
 
-# If we have a large number of scenario files, the [Glob](https://github.com/vtjnash/Glob.jl) package can also be used to avoid having to enumerate them individually:
+# If we have a large number of scenario files, the [Glob](https://github.com/vtjnash/Glob.jl) package can also be used to avoid having to list them individually:
 
 using Glob
 instance = UnitCommitment.read(glob("example_s*.json"))
 
-# Finally, we build the model and optmize as before:
+# Finally, we build the model and optimize as before:
 
 model = UnitCommitment.build_model(
     instance=instance,
     optimizer=HiGHS.Optimizer,
 );
 UnitCommitment.optimize!(model)
+
+# The solution to stochastic instances follows a slightly different format, as shown below:
+
+solution = UnitCommitment.solution(model)
+
+# The solution for each stage can be accessed through `solution[scenario_name]`. For conveniance, this includes both first- and second-stage optimal decisions:
+
+solution["s1"]
