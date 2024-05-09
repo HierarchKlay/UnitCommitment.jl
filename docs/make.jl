@@ -31,7 +31,6 @@ function make()
                 "guides/problem.md",
                 "guides/format.md",
                 "guides/instances.md",
-                "guides/model.md",
             ],
             "api.md",
         ],
