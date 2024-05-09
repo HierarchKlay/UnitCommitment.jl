@@ -7,7 +7,8 @@ using Literate
 
 function make()
     literate_sources = [
-        "src/tutorials/usage.jl"
+        "src/tutorials/usage.jl",
+        "src/tutorials/customizing.jl"
     ]
     for src in literate_sources
         Literate.markdown(
