@@ -61,6 +61,7 @@ end
 function format()
     JuliaFormatter.format(basedir, verbose = true)
     JuliaFormatter.format("$basedir/../../src", verbose = true)
+    JuliaFormatter.format("$basedir/../../docs/src", verbose = true)
     return
 end
 

@@ -82,8 +82,8 @@ solution = UnitCommitment.solve_market(
 
 function solve_market(
     da_path::Union{String,Vector{String}},
-    rt_paths::Vector{String},
-    settings::MarketSettings;
+    rt_paths::Vector{String};
+    settings::MarketSettings = MarketSettings(),
     optimizer,
     lp_optimizer = nothing,
     after_build_da = nothing,
@@ -107,8 +107,8 @@ function solve_market(
     )
     # prepare the final solution 
     solution = OrderedDict()
-    solution["Day-ahead market"] = solution_da
-    solution["Real-time markets"] = OrderedDict()
+    solution["DA"] = solution_da
+    solution["RT"] = []
 
     # count the time, sc.time = n-slots, sc.time_step = slot-interval
     # sufficient to look at only one scenario
@@ -169,8 +169,7 @@ function solve_market(
         )
         prev_initial_status =
             OrderedDict(g.name => g.initial_status for g in sc.thermal_units)
-        # rt_name = first(split(last(split(rt_path, "/")), "."))
-        solution["Real-time markets"][rt_path] = solution_rt
+        push!(solution["RT"], solution_rt)
     end # end of for-loop that checks each RT market
     return solution
 end
@@ -203,10 +202,10 @@ function _build_and_optimize(
             optimizer = lp_optimizer,
         )
         if length(instance.scenarios) == 1
-            solution["Locational marginal price"] = lmp
+            solution["LMP (\$/MW)"] = lmp
         else
             for sc in instance.scenarios
-                solution[sc.name]["Locational marginal price"] = OrderedDict(
+                solution[sc.name]["LMP (\$/MW)"] = OrderedDict(
                     key => val for (key, val) in lmp if key[1] == sc.name
                 )
             end

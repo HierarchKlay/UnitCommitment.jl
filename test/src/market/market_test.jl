@@ -18,7 +18,7 @@ function simple_market_test()
         solution = UnitCommitment.solve_market(
             da_path,
             rt_paths,
-            MarketSettings(), # keep everything default
+            settings = MarketSettings(), # keep everything default
             optimizer = optimizer_with_attributes(
                 Cbc.Optimizer,
                 "logLevel" => 0,
@@ -30,27 +30,27 @@ function simple_market_test()
         )
 
         # the commitment status must agree with DA market
-        da_solution = solution["Day-ahead market"]
+        da_solution = solution["DA"]
         @test da_solution["Is on"]["GenY"] == [0.0, 1.0]
-        @test da_solution["Locational marginal price"][("s1", "B1", 1)] == 50.0
-        @test da_solution["Locational marginal price"][("s1", "B1", 2)] == 56.0
+        @test da_solution["LMP (\$/MW)"][("s1", "B1", 1)] == 50.0
+        @test da_solution["LMP (\$/MW)"][("s1", "B1", 2)] == 56.0
 
-        rt_solution = solution["Real-time markets"]
+        rt_solution = solution["RT"]
         @test length(rt_solution) == 4
-        @test rt_solution[rt_paths[1]]["Is on"]["GenY"] == [0.0, 0.0]
-        @test rt_solution[rt_paths[2]]["Is on"]["GenY"] == [0.0, 1.0]
-        @test rt_solution[rt_paths[3]]["Is on"]["GenY"] == [1.0, 1.0]
-        @test rt_solution[rt_paths[4]]["Is on"]["GenY"] == [1.0]
-        @test length(rt_solution[rt_paths[1]]["Locational marginal price"]) == 2
-        @test length(rt_solution[rt_paths[2]]["Locational marginal price"]) == 2
-        @test length(rt_solution[rt_paths[3]]["Locational marginal price"]) == 2
-        @test length(rt_solution[rt_paths[4]]["Locational marginal price"]) == 1
+        @test rt_solution[1]["Is on"]["GenY"] == [0.0, 0.0]
+        @test rt_solution[2]["Is on"]["GenY"] == [0.0, 1.0]
+        @test rt_solution[3]["Is on"]["GenY"] == [1.0, 1.0]
+        @test rt_solution[4]["Is on"]["GenY"] == [1.0]
+        @test length(rt_solution[1]["LMP (\$/MW)"]) == 2
+        @test length(rt_solution[2]["LMP (\$/MW)"]) == 2
+        @test length(rt_solution[3]["LMP (\$/MW)"]) == 2
+        @test length(rt_solution[4]["LMP (\$/MW)"]) == 1
 
         # solve market with no lmp method
         solution_no_lmp = UnitCommitment.solve_market(
             da_path,
             rt_paths,
-            MarketSettings(lmp_method = nothing), # no lmp
+            settings = MarketSettings(lmp_method = nothing), # no lmp
             optimizer = optimizer_with_attributes(
                 Cbc.Optimizer,
                 "logLevel" => 0,
@@ -58,10 +58,10 @@ function simple_market_test()
         )
 
         # the commitment status must agree with DA market
-        da_solution = solution_no_lmp["Day-ahead market"]
-        @test haskey(da_solution, "Locational marginal price") == false
-        rt_solution = solution_no_lmp["Real-time markets"]
-        @test haskey(rt_solution, "Locational marginal price") == false
+        da_solution = solution_no_lmp["DA"]
+        @test haskey(da_solution, "LMP (\$/MW)") == false
+        rt_solution = solution_no_lmp["RT"][1]
+        @test haskey(rt_solution, "LMP (\$/MW)") == false
     end
 end
 
@@ -113,7 +113,7 @@ function stochastic_market_test()
         solution = UnitCommitment.solve_market(
             da_path,
             rt_paths,
-            MarketSettings(), # keep everything default
+            settings = MarketSettings(), # keep everything default
             optimizer = optimizer_with_attributes(
                 Cbc.Optimizer,
                 "logLevel" => 0,
@@ -127,25 +127,19 @@ function stochastic_market_test()
             after_optimize_rt = after_optimize_rt,
         )
         # the commitment status must agree with DA market
-        da_solution_sp = solution["Day-ahead market"]["market_da_simple"]
-        da_solution_sc = solution["Day-ahead market"]["market_da_scenario"]
+        da_solution_sp = solution["DA"]["market_da_simple"]
+        da_solution_sc = solution["DA"]["market_da_scenario"]
         @test da_solution_sc["Is on"]["GenY"] == [1.0, 1.0]
-        @test da_solution_sp["Locational marginal price"][(
-            "market_da_simple",
-            "B1",
-            1,
-        )] == 25.0
-        @test da_solution_sc["Locational marginal price"][(
-            "market_da_scenario",
-            "B1",
-            2,
-        )] == 0.0
+        @test da_solution_sp["LMP (\$/MW)"][("market_da_simple", "B1", 1)] ==
+              25.0
+        @test da_solution_sc["LMP (\$/MW)"][("market_da_scenario", "B1", 2)] ==
+              0.0
 
-        rt_solution = solution["Real-time markets"]
-        @test rt_solution[rt_paths[1]]["Is on"]["GenY"] == [1.0, 1.0]
-        @test rt_solution[rt_paths[2]]["Is on"]["GenY"] == [1.0, 1.0]
-        @test rt_solution[rt_paths[3]]["Is on"]["GenY"] == [1.0, 1.0]
-        @test rt_solution[rt_paths[4]]["Is on"]["GenY"] == [1.0]
+        rt_solution = solution["RT"]
+        @test rt_solution[1]["Is on"]["GenY"] == [1.0, 1.0]
+        @test rt_solution[2]["Is on"]["GenY"] == [1.0, 1.0]
+        @test rt_solution[3]["Is on"]["GenY"] == [1.0, 1.0]
+        @test rt_solution[4]["Is on"]["GenY"] == [1.0]
         @test length(lmps_rt) == 4
     end
 end

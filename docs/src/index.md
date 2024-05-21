@@ -1,6 +1,6 @@
 # UnitCommitment.jl
 
-**UnitCommitment.jl** (UC.jl) is an optimization package for the Security-Constrained Unit Commitment Problem (SCUC), a fundamental optimization problem in power systems used, for example, to clear the day-ahead electricity markets. Both deterministic and two-stage stochastic versions of the problem are supported. The package provides benchmark instances for the problem, a flexible and well-documented data format for the problem, as well as Julia/JuMP implementations of state-of-the-art mixed-integer programming formulations and solution methods.
+**UnitCommitment.jl** (UC.jl) is an optimization package for the Security-Constrained Unit Commitment Problem (SCUC), a fundamental optimization problem in power systems used, for example, to clear the electricity markets. Both deterministic and two-stage stochastic versions of the problem are supported. The package provides benchmark instances for the problem, a flexible and well-documented data format for the problem, as well as Julia/JuMP implementations of state-of-the-art mixed-integer programming formulations and solution methods.
 
 ## Package Components
 
@@ -29,7 +29,7 @@
 
 If you use UnitCommitment.jl in your research (instances, models or algorithms), we kindly request that you cite the package as follows:
 
-- **Alinson S. Xavier, Aleksandr M. Kazachkov, Ogün Yurdakul, Jun He, Feng Qiu**, "UnitCommitment.jl: A Julia/JuMP Optimization Package for Security-Constrained Unit Commitment (Version 0.4)". Zenodo (2023). [DOI: 10.5281/zenodo.4269874](https://doi.org/10.5281/zenodo.4269874).
+- **Alinson S. Xavier, Aleksandr M. Kazachkov, Ogün Yurdakul, Jun He, Feng Qiu**, "UnitCommitment.jl: A Julia/JuMP Optimization Package for Security-Constrained Unit Commitment (Version 0.4)". Zenodo (2024). [DOI: 10.5281/zenodo.4269874](https://doi.org/10.5281/zenodo.4269874).
 
 If you use the instances, we additionally request that you cite the original sources, as described in the [instances page](guides/instances.md).
 
@@ -37,7 +37,7 @@ If you use the instances, we additionally request that you cite the original sou
 
 ```text
 UnitCommitment.jl: A Julia/JuMP Optimization Package for Security-Constrained Unit Commitment
-Copyright © 2020-2023, UChicago Argonne, LLC. All Rights Reserved.
+Copyright © 2020-2024, UChicago Argonne, LLC. All Rights Reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted
 provided that the following conditions are met:

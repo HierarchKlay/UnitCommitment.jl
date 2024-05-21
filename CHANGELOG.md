@@ -11,6 +11,15 @@ All notable changes to this project will be documented in this file.
 [semver]: https://semver.org/spec/v2.0.0.html
 [pkjjl]: https://pkgdocs.julialang.org/v1/compatibility/#compat-pre-1.0
 
+## [0.4.0] - 2024-05-21
+### Added
+- Add support for two-stage stochastic problems
+- Add market clearing functions
+- Add time decomposition 
+- Add scenario decomposition (progressive hedging)
+- Add support for battery storage
+- Add support for network interfaces
+
 ## [0.3.0] - 2022-07-18
 ### Added
 - Add support for multiple reserve products and zonal reserves.

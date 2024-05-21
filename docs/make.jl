@@ -8,7 +8,9 @@ using Literate
 function make()
     literate_sources = [
         "src/tutorials/usage.jl",
-        "src/tutorials/customizing.jl"
+        "src/tutorials/customizing.jl",
+        "src/tutorials/lmp.jl",
+        "src/tutorials/market.jl",
     ]
     for src in literate_sources
         Literate.markdown(
@@ -25,6 +27,7 @@ function make()
             "Tutorials" => [
                 "tutorials/usage.md",
                 "tutorials/customizing.md",
+                "tutorials/lmp.md",
                 "tutorials/market.md",
                 "tutorials/decomposition.md",
             ],

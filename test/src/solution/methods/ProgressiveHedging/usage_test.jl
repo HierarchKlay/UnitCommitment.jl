@@ -9,7 +9,7 @@ function solution_methods_ProgressiveHedging_usage_test()
     @testset "ProgressiveHedging" begin
         mpiexec() do exe
             return run(
-                `$exe -n 2 $(Base.julia_cmd()) --project=test $basedir/ph.jl`,
+                `$exe -n 2 $(Base.julia_cmd()) --project=. $basedir/ph.jl`,
             )
         end
     end
