@@ -11,7 +11,7 @@ An instance of the stochastic security-constrained unit commitment (SCUC) proble
 - [Reserves](#Reserves)
 - [Contingencies](#Contingencies)
 
-Each section is described in detail below. See [case118/2017-01-01.json.gz](https://axavier.org/UnitCommitment.jl/0.3/instances/matpower/case118/2017-01-01.json.gz) for a complete example.
+Each section is described in detail below. See [case118/2017-01-01.json.gz](https://axavier.org/UnitCommitment.jl/0.4/instances/matpower/case118/2017-01-01.json.gz) for a complete example.
 
 ### Parameters
 
@@ -31,7 +31,7 @@ This section describes system-wide parameters, such as power balance penalty, an
 ```json
 {
   "Parameters": {
-    "Version": "0.3",
+    "Version": "0.4",
     "Time horizon (h)": 4,
     "Power balance penalty ($/MW)": 1000.0,
     "Scenario name": "s1",

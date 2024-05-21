@@ -18,7 +18,6 @@ All notable changes to this project will be documented in this file.
 - Add time decomposition methods
 - Add scenario decomposition methods (progressive hedging)
 - Add support for energy storage units
-- Add support for network interfaces
 - Rewrite documentation with runnable examples
 
 ## [0.3.0] - 2022-07-18
