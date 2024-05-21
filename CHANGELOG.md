@@ -14,11 +14,12 @@ All notable changes to this project will be documented in this file.
 ## [0.4.0] - 2024-05-21
 ### Added
 - Add support for two-stage stochastic problems
-- Add market clearing functions
-- Add time decomposition 
-- Add scenario decomposition (progressive hedging)
-- Add support for battery storage
+- Add support for day-ahead and real-time market clearing simulation
+- Add time decomposition methods
+- Add scenario decomposition methods (progressive hedging)
+- Add support for energy storage units
 - Add support for network interfaces
+- Rewrite documentation with runnable examples
 
 ## [0.3.0] - 2022-07-18
 ### Added
