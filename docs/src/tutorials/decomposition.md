@@ -1,8 +1,8 @@
 # Decomposition methods
 
-## 1. Time decomposition
+## 1. Time decomposition for production cost modeling
 
-Solving unit commitment instances that have long time horizons (for example, year-long 8760-hour instances) requires a substantial amount of computational power. To address this issue, UC.jl offers a time decomposition method, which breaks the instance down into multiple overlapping subproblems, solves them sequentially, then reassembles the solution.
+Solving unit commitment instances that have long time horizons (for example, year-long 8760-hour instances in production cost modeling) requires a substantial amount of computational power. To address this issue, UC.jl offers a time decomposition method, which breaks the instance down into multiple overlapping subproblems, solves them sequentially, then reassembles the solution.
 
 When solving a unit commitment instance with a dense time slot structure, computational complexity can become a significant challenge. For instance, if the instance contains hourly data for an entire year (8760 hours), solving such a model can require a substantial amount of computational power. To address this issue, UC.jl provides a time_decomposition method within the `optimize!` function. This method decomposes the problem into multiple sub-problems, solving them sequentially.
 
@@ -57,7 +57,7 @@ solution = UnitCommitment.optimize!(
 )
 ```
 
-## 2. Scenario decomposition with Progressive Hedging
+## 2. Scenario decomposition with Progressive Hedging for stochstic UC
 
 By default, UC.jl uses the Extensive Form (EF) when solving stochastic instances. This approach involves constructing a single JuMP model that contains data and decision variables for all scenarios. Although EF has optimality guarantees and performs well with small test cases, it can become computationally intractable for large instances or substantial number of scenarios.
 
