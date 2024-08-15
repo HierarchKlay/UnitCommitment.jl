@@ -112,3 +112,55 @@ function build_model(;
     end
     return model
 end
+
+# modified model by Yu-Yang Tang
+function build_mymodel(;
+    instance::UnitCommitmentInstance,
+    optimizer = nothing,
+    formulation = Formulation(),
+    variable_names::Bool = false,
+    is_min_updown::Bool = true,
+)::JuMP.Model
+    @info "Building premodel..."
+    time_model = @elapsed begin
+        model = Model()
+        if optimizer !== nothing
+            set_optimizer(model, optimizer)
+        end
+        model[:obj] = AffExpr()
+        model[:instance] = instance
+        for g in instance.scenarios[1].thermal_units
+            _add_callback_unit_commitment!(model, g, formulation, is_min_updown)
+        end
+        for sc in instance.scenarios
+            @info "Building scenario $(sc.name) with " *
+                  "probability $(sc.probability)"
+            _setup_transmission(formulation.transmission, sc)
+            for l in sc.lines
+                _add_transmission_line!(model, l, formulation.transmission, sc)
+            end
+            for b in sc.buses
+                _add_bus!(model, b, sc)
+            end
+            for ps in sc.price_sensitive_loads
+                _add_price_sensitive_load!(model, ps, sc)
+            end
+            for g in sc.thermal_units
+                _add_unit_dispatch!(model, g, formulation, sc)
+            end
+            for pu in sc.profiled_units
+                _add_profiled_unit!(model, pu, sc)
+            end
+            for su in sc.storage_units
+                _add_storage_unit!(model, su, sc)
+            end
+            _add_system_wide_eqs!(model, sc)
+        end
+        @objective(model, Min, model[:obj])
+    end
+    @info @sprintf("Built premodel in %.2f seconds", time_model)
+    if variable_names
+        _set_names!(model)
+    end
+    return model
+end

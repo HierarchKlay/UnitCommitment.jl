@@ -29,6 +29,36 @@ function _add_unit_commitment!(
 end
 
 # Function for adding variables, constraints, and objective function terms
+# related to the binary commitment, startup and shutdown decisions of units
+# adding min uptime downtime constraints based on parameter `is_min_updown`
+function _add_callback_unit_commitment!(
+    model::JuMP.Model,
+    g::ThermalUnit,
+    formulation::Formulation,
+    is_min_updown::Bool,
+)
+    if !all(g.must_run) && any(g.must_run)
+        error("Partially must-run units are not currently supported")
+    end
+    if g.initial_power === nothing || g.initial_status === nothing
+        error("Initial conditions for $(g.name) must be provided")
+    end
+
+    # Variables
+    _add_startup_shutdown_vars!(model, g)
+    _add_status_vars!(model, g, formulation.status_vars)
+
+    # Constraints and objective function
+    if is_min_updown
+        _add_min_uptime_downtime_eqs!(model, g)
+    end
+    # _add_startup_cost_eqs!(model, g, formulation.startup_costs)
+    _add_status_eqs!(model, g, formulation.status_vars)
+    _add_commitment_status_eqs!(model, g)
+    return
+end
+
+# Function for adding variables, constraints, and objective function terms
 # related to the continuous dispatch decisions of units
 function _add_unit_dispatch!(
     model::JuMP.Model,

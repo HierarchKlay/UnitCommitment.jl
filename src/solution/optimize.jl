@@ -12,3 +12,8 @@ and N-1 security constraints.
 function optimize!(model::JuMP.Model)::Nothing
     return UnitCommitment.optimize!(model, XavQiuWanThi2019.Method())
 end
+
+# solve the unit commitment problem without considering transmission-related constraints
+function optimizeUC!(model::JuMP.Model)::Nothing
+    return UnitCommitment.optimize!(model, UCSolve.Method())
+end
