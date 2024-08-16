@@ -14,6 +14,6 @@ function optimize!(model::JuMP.Model)::Nothing
 end
 
 # solve the unit commitment problem without considering transmission-related constraints
-function optimizeUC!(model::JuMP.Model)::Nothing
-    return UnitCommitment.optimize!(model, UCSolve.Method())
+function direct_optimize!(model::JuMP.Model)::Nothing
+    return UnitCommitment.optimize!(model, DirectSolve.Method())
 end

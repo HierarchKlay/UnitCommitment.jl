@@ -2,7 +2,7 @@
 # Copyright (C) 2020, UChicago Argonne, LLC. All rights reserved.
 # Released under the modified BSD license. See COPYING.md for more details.
 
-function optimize!(model::JuMP.Model, method::UCSolve.Method)::Nothing
+function optimize!(model::JuMP.Model, method::DirectSolve.Method)::Nothing
     
     function set_gap(gap)
         JuMP.set_optimizer_attribute(model, "MIPGap", gap)

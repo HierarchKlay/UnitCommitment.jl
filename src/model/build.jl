@@ -120,6 +120,8 @@ function build_mymodel(;
     formulation = Formulation(),
     variable_names::Bool = false,
     is_min_updown::Bool = true,
+    is_pre_contigency::Bool = true,
+    is_post_contigency::Bool = true,
 )::JuMP.Model
     @info "Building premodel..."
     time_model = @elapsed begin
@@ -155,6 +157,12 @@ function build_mymodel(;
             #     _add_storage_unit!(model, su, sc)
             # end
             _add_system_wide_eqs!(model, sc)
+            if is_pre_contigency
+                _add_pre_contigency_constraints!(model, sc)
+            end
+            if is_post_contigency
+                _add_post_contigency_constraints!(model, sc)
+            end
         end
         @objective(model, Min, model[:obj])
     end
