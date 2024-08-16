@@ -20,6 +20,25 @@ function _add_transmission_line!(
     return
 end
 
+# overflow is not allowed in all transmission lines 
+function _add_restricted_transmission_line!(
+    model::JuMP.Model,
+    lm::TransmissionLine,
+    f::ShiftFactorsFormulation,
+    sc::UnitCommitmentScenario,
+)::Nothing
+    overflow = _init(model, :overflow)
+    for t in 1:model[:instance].time
+        overflow[sc.name, lm.name, t] = @variable(model, lower_bound = 0, upper_bound = 0)
+        add_to_expression!(
+            model[:obj],
+            overflow[sc.name, lm.name, t],
+            lm.flow_limit_penalty[t] * sc.probability,
+        )
+    end
+    return
+end
+
 function _setup_transmission(
     formulation::ShiftFactorsFormulation,
     sc::UnitCommitmentScenario,

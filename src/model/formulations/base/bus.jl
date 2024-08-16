@@ -30,3 +30,33 @@ function _add_bus!(
     end
     return
 end
+
+# curtailment is not allowed in all buses
+function _add_no_curtail_bus!(
+    model::JuMP.Model,
+    b::Bus,
+    sc::UnitCommitmentScenario,
+)::Nothing
+    net_injection = _init(model, :expr_net_injection)
+    curtail = _init(model, :curtail)
+    for t in 1:model[:instance].time
+        # Fixed load
+        net_injection[sc.name, b.name, t] = AffExpr(-b.load[t])
+
+        # Load curtailment
+        curtail[sc.name, b.name, t] =
+            @variable(model, lower_bound = 0, upper_bound = 0)
+
+        add_to_expression!(
+            net_injection[sc.name, b.name, t],
+            curtail[sc.name, b.name, t],
+            1.0,
+        )
+        add_to_expression!(
+            model[:obj],
+            curtail[sc.name, b.name, t],
+            sc.power_balance_penalty[t] * sc.probability,
+        )
+    end
+    return
+end

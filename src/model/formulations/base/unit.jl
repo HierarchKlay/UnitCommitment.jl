@@ -31,7 +31,8 @@ end
 # Function for adding variables, constraints, and objective function terms
 # related to the binary commitment, startup and shutdown decisions of units
 # adding min uptime downtime constraints based on parameter `is_min_updown`
-function _add_callback_unit_commitment!(
+# Constraints and objective terms related to startup penalty is omitted in this formulation
+function _add_no_startup_cost_unit_commitment!(
     model::JuMP.Model,
     g::ThermalUnit,
     formulation::Formulation,
