@@ -48,6 +48,10 @@ This package is a modification of the original [UnitCommitment.jl](https://githu
 
 Replace `"/path-to-repository"` with the actual path to the cloned repository on your device.
 
+## Branches
++ `dev`: This branch contains the original, unmodified version of the package.
++ `240815`:  This branch includes the modified version of the package with the updates and enhancements that I’ve implemented.
+
 ## License
 
 This modified package retains the original BSD license. See LICENSE.md for more details.
