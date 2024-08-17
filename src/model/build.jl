@@ -158,15 +158,21 @@ function build_mymodel(;
             # end
             _add_system_wide_eqs!(model, sc)
             if is_pre_contigency
-                _add_pre_contigency_constraints!(model, sc)
+                time_add_pre_contig = @elapsed begin
+                    _add_pre_contigency_constraints!(model, sc)
+                end
+                @info @sprintf("Add pre-contigency security constraints in %.2f seconds", time_add_pre_contig)
             end
             if is_post_contigency
-                _add_post_contigency_constraints!(model, sc)
+                time_add_post_contig = @elapsed begin
+                    _add_post_contigency_constraints!(model, sc)
+                end
+                @info @sprintf("Add post-contigency security constraints in %.2f seconds", time_add_post_contig)
             end
         end
         @objective(model, Min, model[:obj])
     end
-    @info @sprintf("Built premodel in %.2f seconds", time_model)
+    @info @sprintf("Built modified model in %.2f seconds", time_model)
     if variable_names
         _set_names!(model)
     end
