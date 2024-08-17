@@ -123,7 +123,7 @@ function build_mymodel(;
     is_pre_contigency::Bool = true,
     is_post_contigency::Bool = true,
 )::JuMP.Model
-    @info "Building premodel..."
+    @info "Building modified model..."
     time_model = @elapsed begin
         model = Model()
         if optimizer !== nothing

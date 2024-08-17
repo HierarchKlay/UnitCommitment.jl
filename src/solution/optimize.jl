@@ -13,7 +13,12 @@ function optimize!(model::JuMP.Model)::Nothing
     return UnitCommitment.optimize!(model, XavQiuWanThi2019.Method())
 end
 
-# solve the unit commitment problem without considering transmission-related constraints
+# solve the security constrained unit commitment problem directly
 function direct_optimize!(model::JuMP.Model)::Nothing
     return UnitCommitment.optimize!(model, DirectSolve.Method())
+end
+
+# solve the security constrained unit commitment problem with callback on min updown time constraints
+function callback_optimize!(model::JuMP.Model)::Nothing
+    return UnitCommitment.optimize!(model, RowGeneration.Method())
 end
