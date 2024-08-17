@@ -5,7 +5,11 @@
 function optimize!(model::JuMP.Model, method::DirectSolve.Method)::Nothing
     
     function set_gap(gap)
-        JuMP.set_optimizer_attribute(model, "MIPGap", gap)
+        if occursin("Gurobi", JuMP.solver_name(model))
+            JuMP.set_optimizer_attribute(model, "MIPGap", gap)
+        elseif occursin("CPLEX", JuMP.solver_name(model))
+            JuMP.set_optimizer_attribute(model, "CPXPARAM_MIP_Tolerances_MIPGap", gap)
+        end
         @info @sprintf("MIP gap tolerance set to %f", gap)
     end
     initial_time = time()
