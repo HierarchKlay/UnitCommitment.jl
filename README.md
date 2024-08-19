@@ -108,7 +108,7 @@ See official documentation at: https://anl-ceeesa.github.io/UnitCommitment.jl/
 
 If you use UnitCommitment.jl in your research (instances, models or algorithms), we kindly request that you cite the package as follows:
 
-* **Alinson S. Xavier, Aleksandr M. Kazachkov, Ogün Yurdakul, Feng Qiu**. "UnitCommitment.jl: A Julia/JuMP Optimization Package for Security-Constrained Unit Commitment (Version 0.4)". Zenodo (2024). [DOI: 10.5281/zenodo.4269874](https://doi.org/10.5281/zenodo.4269874).
+* **Alinson S. Xavier, Aleksandr M. Kazachkov, Ogün Yurdakul, Jun He, Feng Qiu**. "UnitCommitment.jl: A Julia/JuMP Optimization Package for Security-Constrained Unit Commitment (Version 0.4)". Zenodo (2024). [DOI: 10.5281/zenodo.4269874](https://doi.org/10.5281/zenodo.4269874).
 
 If you use the instances, we additionally request that you cite the original sources, as described in the documentation.
 
