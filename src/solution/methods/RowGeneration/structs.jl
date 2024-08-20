@@ -19,10 +19,37 @@ Fields
     the desired relative optimality gap. 
 
 """
-Base.@kwdef mutable struct Method <: SolutionMethod
-    time_limit::Float64 = 7200.0
-    gap_limit::Float64 = 1e-3
+mutable struct Method <: SolutionMethod
+    time_limit::Float64
+    gap_limit::Float64
+    is_gen_min_time::Bool
+    is_gen_pre_conting::Bool
+    is_gen_post_conting::Bool
+    max_violations_per_line::Int
+    max_violations_per_period::Int
+    max_violations_per_unit::Int
 
+    function Method(;
+        time_limit::Float64 = 7200.0,
+        gap_limit::Float64 = 1e-3,
+        is_gen_min_time::Bool = true,
+        is_gen_pre_conting::Bool = true,
+        is_gen_post_conting::Bool = true,
+        max_violations_per_line::Int = 1,
+        max_violations_per_period::Int = 5,
+        max_violations_per_unit::Int = 1,
+    )
+        return new(
+            time_limit,
+            gap_limit,
+            is_gen_min_time,
+            is_gen_pre_conting,
+            is_gen_post_conting,
+            max_violations_per_line,
+            max_violations_per_period,
+            max_violations_per_unit,
+        )
+    end
     
 end
 end

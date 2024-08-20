@@ -15,20 +15,42 @@ function optimize!(model::JuMP.Model, method::RowGeneration.Method)::Nothing
 
     initial_time = time()
 
-    (haskey(model, :eq_min_uptime) || haskey(model, :eq_min_downtime)) && error("
-        RowGeneration method is based on the formulation without min updown time constraints\n
-        Please set is_min_updown=false in build_mymodel()")
+    if method.is_gen_min_time
+        (haskey(model, :eq_min_uptime) || haskey(model, :eq_min_downtime)) && error("
+            Method is based on the formulation without min updown time constraints\n
+            Please set is_min_updown=false in build_mymodel()")
+    end
+
+    if method.is_gen_pre_conting
+        (haskey(model, :eq_preconting_uplimit) || haskey(model, :eq_preconting_downlimit) || 
+        haskey(model, :eq_preconting_flow_def)) && error("
+            Method is based on the formulation without pre-contingency constraints\n
+            Please set is_pre_contingency=false in build_mymodel()")
+    end
+
+    if method.is_gen_post_conting
+        (haskey(model, :eq_postconting_uplimit) || haskey(model, :eq_postconting_downlimit) || 
+        haskey(model, :eq_postconting_flow_def)) && error("
+            Method is based on the formulation without post-contingency constraints\n
+            Please set is_post_contingency=false in build_mymodel()")
+    end
     
     set_gap(method.gap_limit)
 
     function lazyCons(cb_data)
         isLazy = true
-        _callback_function(cb_data, isLazy, model)
+        _callback_function(cb_data, isLazy, model, method)
     end
 
-    callback_time = 0
+    
    
     while true
+        @info @sprintf("Setting is_gen_min_time=%s",method.is_gen_min_time)
+        @info @sprintf("Setting is_gen_pre_conting=%s",method.is_gen_pre_conting)
+        @info @sprintf("Setting is_gen_post_conting=%s",method.is_gen_post_conting)
+        MOI.set(model, MOI.LazyConstraintCallback(), lazyCons)
+
+        @info "Solving MILP..."
         time_elapsed = time() - initial_time
         time_remaining = method.time_limit - time_elapsed
         if time_remaining < 0
@@ -40,8 +62,6 @@ function optimize!(model::JuMP.Model, method::RowGeneration.Method)::Nothing
             time_remaining
         )
         JuMP.set_time_limit_sec(model, time_remaining)
-        MOI.set(model, MOI.LazyConstraintCallback(), lazyCons)
-        @info "Solving MILP..."
         JuMP.optimize!(model)
 
         break

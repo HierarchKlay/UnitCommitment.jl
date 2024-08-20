@@ -86,25 +86,25 @@ end
 #     IEEE Transactions on power systems, 33(1), 329-337.
 # 
 # 
-function _add_pre_contigency_constraints!(
+function _add_pre_contingency_constraints!(
     model::JuMP.Model,
     sc::UnitCommitmentScenario,
 )
     overflow = model[:overflow]
     net_injection = model[:net_injection]
-    eq_precontig_uplimit = _init(model, :eq_precontig_uplimit)
-    eq_precontig_downlimit = _init(model, :eq_precontig_downlimit)
-    eq_precontig_flow_def = _init(model, :eq_precontig_flow_def)
+    eq_preconting_uplimit = _init(model, :eq_preconting_uplimit)
+    eq_preconting_downlimit = _init(model, :eq_preconting_downlimit)
+    eq_preconting_flow_def = _init(model, :eq_preconting_flow_def)
 
     for t in 1:model[:instance].time, lm in sc.lines
         flow = @variable(model, base_name = "flow[$(lm.name),$t]")
         limit = lm.normal_flow_limit[t]
         v = overflow[sc.name, lm.name, t]
 
-        eq_precontig_uplimit[sc.name, lm.name, t] = @constraint(model, flow <= limit + v)
-        eq_precontig_downlimit[sc.name, lm.name, t] = @constraint(model, -flow <= limit + v)
+        eq_preconting_uplimit[sc.name, lm.name, t] = @constraint(model, flow <= limit + v)
+        eq_preconting_downlimit[sc.name, lm.name, t] = @constraint(model, -flow <= limit + v)
 
-        eq_precontig_flow_def[sc.name, lm.name, t] = @constraint(
+        eq_preconting_flow_def[sc.name, lm.name, t] = @constraint(
             model,
             flow == sum(
                 net_injection[sc.name, b.name, t] *
@@ -117,29 +117,29 @@ function _add_pre_contigency_constraints!(
     @info @sprintf("Add %d pre-contingencies security constraints in total", length(sc.lines) * model[:instance].time)
 end
 
-function _add_post_contigency_constraints!(
+function _add_post_contingency_constraints!(
     model::JuMP.Model,
     sc::UnitCommitmentScenario,
 )
     overflow = model[:overflow]
     net_injection = model[:net_injection]
-    eq_postcontig_uplimit = _init(model, :eq_postcontig_uplimit)
-    eq_postcontig_downlimit = _init(model, :eq_postcontig_downlimit)
-    eq_postcontig_flow_def = _init(model, :eq_postcontig_flow_def)
+    eq_postconting_uplimit = _init(model, :eq_postconting_uplimit)
+    eq_postconting_downlimit = _init(model, :eq_postconting_downlimit)
+    eq_postconting_flow_def = _init(model, :eq_postconting_flow_def)
 
-    for t in 1:model[:instance].time, lm in sc.lines, contig in sc.contingencies
-        length(contig.lines) == 1 || error("The package does NOT support N-k contingency yet.")
-        length(contig.thermal_units) == 0 || error("The package does NOT support thermal units contingency yet.")
+    for t in 1:model[:instance].time, lm in sc.lines, conting in sc.contingencies
+        length(conting.lines) == 1 || error("The package does NOT support N-k contingency yet.")
+        length(conting.thermal_units) == 0 || error("The package does NOT support thermal units contingency yet.")
         
-        lc = contig.lines[1]
+        lc = conting.lines[1]
         flow = @variable(model, base_name = "flow[$(lm.name),$(lc.name),$t]")
         limit = lm.emergency_flow_limit[t]
         v = overflow[sc.name, lm.name, t]
 
-        eq_postcontig_uplimit[sc.name, lm.name, lc.name, t] = @constraint(model, flow <= limit + v)
-        eq_postcontig_downlimit[sc.name, lm.name, lc.name, t] = @constraint(model, -flow <= limit + v)
+        eq_postconting_uplimit[sc.name, lm.name, lc.name, t] = @constraint(model, flow <= limit + v)
+        eq_postconting_downlimit[sc.name, lm.name, lc.name, t] = @constraint(model, -flow <= limit + v)
 
-        eq_postcontig_flow_def[sc.name, lm.name, lc.name, t] = @constraint(
+        eq_postconting_flow_def[sc.name, lm.name, lc.name, t] = @constraint(
             model,
             flow == sum(
                 net_injection[sc.name, b.name, t] *(

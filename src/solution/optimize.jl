@@ -19,6 +19,15 @@ function direct_optimize!(model::JuMP.Model)::Nothing
 end
 
 # solve the security constrained unit commitment problem with callback on min updown time constraints
-function callback_optimize!(model::JuMP.Model)::Nothing
-    return UnitCommitment.optimize!(model, RowGeneration.Method())
+function callback_optimize!(;
+    model::JuMP.Model,
+    is_gen_min_time::Bool = true,
+    is_gen_pre_conting::Bool = true,
+    is_gen_post_conting::Bool = true,
+)::Nothing
+    return UnitCommitment.optimize!(model, RowGeneration.Method(
+        is_gen_min_time=is_gen_min_time,
+        is_gen_pre_conting=is_gen_pre_conting,
+        is_gen_post_conting=is_gen_post_conting,
+    ))
 end

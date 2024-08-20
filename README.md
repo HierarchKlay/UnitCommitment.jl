@@ -16,8 +16,8 @@ This package is a modification of the original [UnitCommitment.jl](https://githu
       formulation = Formulation(),
       variable_names::Bool = false,
       is_min_updown::Bool = true,
-      is_pre_contigency::Bool = true,
-      is_post_contigency::Bool = true,
+      is_pre_contingency::Bool = true,
+      is_post_contingency::Bool = true,
   )::JuMP.Model
   ```
 - **Purpose**: The **build_mymodel** function is an adaptation of the original **build_model** function. It constructs a model that excludes constraints and objective terms related to  **startup costs** ,  **bus curtailment** , and  **reserve shortfall penalties** . Additionally, this model does not account for  **profiled generators** ,  **price-sensitive loads** , or  **energy storage** . However, it provides flexibility by allowing the inclusion or exclusion of **pre-contingency and post-contingency security constraints and min up/down time constraints** through specific parameters.
@@ -49,6 +49,7 @@ This package is a modification of the original [UnitCommitment.jl](https://githu
 Replace `"/path-to-repository"` with the actual path to the cloned repository on your device.
 
 ## Branches
+
 + `dev`: This branch contains the original, unmodified version of the package.
 + `240815`:  This branch includes the modified version of the package with the updates and enhancements that I’ve implemented.
 

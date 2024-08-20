@@ -120,8 +120,8 @@ function build_mymodel(;
     formulation = Formulation(),
     variable_names::Bool = false,
     is_min_updown::Bool = true,
-    is_pre_contigency::Bool = true,
-    is_post_contigency::Bool = true,
+    is_pre_contingency::Bool = true,
+    is_post_contingency::Bool = true,
 )::JuMP.Model
     @info "Building modified model..."
     time_model = @elapsed begin
@@ -157,17 +157,17 @@ function build_mymodel(;
             #     _add_storage_unit!(model, su, sc)
             # end
             _add_system_wide_eqs!(model, sc)
-            if is_pre_contigency
-                time_add_pre_contig = @elapsed begin
-                    _add_pre_contigency_constraints!(model, sc)
+            if is_pre_contingency
+                time_add_pre_conting = @elapsed begin
+                    _add_pre_contingency_constraints!(model, sc)
                 end
-                @info @sprintf("Add pre-contigency security constraints in %.2f seconds", time_add_pre_contig)
+                @info @sprintf("Add pre-contingency security constraints in %.2f seconds", time_add_pre_conting)
             end
-            if is_post_contigency
-                time_add_post_contig = @elapsed begin
-                    _add_post_contigency_constraints!(model, sc)
+            if is_post_contingency
+                time_add_post_conting = @elapsed begin
+                    _add_post_contingency_constraints!(model, sc)
                 end
-                @info @sprintf("Add post-contigency security constraints in %.2f seconds", time_add_post_contig)
+                @info @sprintf("Add post-contingency security constraints in %.2f seconds", time_add_post_conting)
             end
         end
         @objective(model, Min, model[:obj])
