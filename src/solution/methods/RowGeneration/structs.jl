@@ -54,4 +54,33 @@ mutable struct Method <: SolutionMethod
 end
 end
 
+import DataStructures: PriorityQueue
+
+struct _Consec_Violation
+    time::Int
+    unit::ThermalUnit
+    is_consec_on::Bool
+    is_init_vio::Bool
+    amount::Float64
+
+    function _Consec_Violation(;
+        time::Int,
+        unit::ThermalUnit,
+        is_consec_on::Bool,
+        is_init_vio::Bool,
+        amount::Float64,
+    )
+        return new(time, unit, is_consec_on, is_init_vio, amount)
+    end
+end
+
+mutable struct _Consec_ViolationFilter
+    max_per_unit::Int
+    max_total::Int
+    queues::Dict{AbstractString,PriorityQueue{_Consec_Violation,Float64}}
+
+    function _Consec_ViolationFilter(; max_per_unit::Int = 1, max_total::Int = 5)
+        return new(max_per_unit, max_total, Dict())
+    end
+end
 

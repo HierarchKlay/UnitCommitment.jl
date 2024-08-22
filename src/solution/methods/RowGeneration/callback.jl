@@ -6,11 +6,53 @@ function _callback_function(cb_data, isLazy, model, method)
     # When obtaining an incumbent of the original problems, do the callback
     if status == MOI.CALLBACK_NODE_STATUS_INTEGER
         @info "Do callback now..."
-        
+        statistic = model[:statistic]
+        solt = statistic.time_solve_model
+        solt.callback["ver_consec"] = 0
+        solt.callback["add_consec"] = 0
+        solt.callback["ver_conting"] = 0
+        solt.callback["add_conting"] = 0
+
         if method.is_gen_min_time
+            @info "Verifying min-consecutiveness requirement"
             start_time = time()
-            _generate_min_updown_time_constraints(cb_data, model, Cons)
-            @info @sprintf("Added min_updown_time constraints in %.2f seconds", time()-start_time)
+            consec_vios = []
+            for sc in model[:instance].scenarios
+                push!(
+                    consec_vios,
+                    _find_consecutiveness_violation_in_callback(
+                        cb_data, 
+                        model, 
+                        sc, 
+                        max_per_unit = method.max_violations_per_unit,
+                        max_total = method.max_violations_per_period,
+                        method = method,
+                    ),
+                ) 
+            end
+            @info @sprintf("Verified min-consecutiveness requirement in %.2f seconds", time()-start_time)
+            solt.callback["ver_consec"] += time()-start_time
+
+            is_consec_vio_found = false
+            for v in consec_vios
+                if !isempty(v)
+                    is_consec_vio_found = true
+                end
+            end
+            if is_consec_vio_found
+                start_time = time()
+                for (i, v) in enumerate(consec_vios)
+                    stat_conss_added = _generate_min_updown_time_constraints(cb_data, model, Cons, v, model[:instance].scenarios[i])
+                    @info @sprintf("In scenario %d, amount of min consecutive constraints added:", i)
+                    for (gn, amount) in stat_conss_added
+                        @info @sprintf("%s: %d", gn, amount)
+                    end
+                end
+                @info @sprintf("Added min_updown_time constraints in %.2f seconds", time()-start_time)
+                solt.callback["add_consec"] += time()-start_time
+            else
+                @info "No consecutive violation found"
+            end
         end
 
         has_transmission = length(model[:instance].scenarios[1].isf) > 0
@@ -42,6 +84,7 @@ function _callback_function(cb_data, isLazy, model, method)
             "Verified transmission limits in %.2f seconds",
             time_screening
             )
+            solt.callback["ver_conting"] += time_screening
 
             violations_found = false
             for v in violations
@@ -51,9 +94,12 @@ function _callback_function(cb_data, isLazy, model, method)
             end
 
             if violations_found
+                start_time = time()
                 for (i, v) in enumerate(violations)
                     _generate_contingency_constraints(cb_data, model, Cons, v, model[:instance].scenarios[i], method)
                 end
+                time_gen = time() - start_time
+                solt.callback["add_conting"] += time_gen
             else
                 @info "No violations found"
             end
@@ -64,88 +110,66 @@ function _callback_function(cb_data, isLazy, model, method)
     end
 end
 
-function _generate_min_updown_time_constraints(cb_data, model, Cons)
+function _generate_min_updown_time_constraints(cb_data, model, Cons, violations, sc)
     is_on = model[:is_on]
     switch_off = model[:switch_off]
     switch_on = model[:switch_on]
 
     T = model[:instance].time
-    
-    # Store the incumbent values 
-    is_on_values = Dict((g.name, t) =>
-        callback_value(cb_data, is_on[g.name,t]) 
-        for g in model[:instance].scenarios[1].thermal_units, 
-            t in 1:T
-    )
-    switch_off_values = Dict((g.name, t) =>
-        callback_value(cb_data, switch_off[g.name,t]) 
-        for g in model[:instance].scenarios[1].thermal_units, 
-            t in 1:T
-    )
-    switch_on_values = Dict((g.name, t) =>
-        callback_value(cb_data, switch_on[g.name,t]) 
-        for g in model[:instance].scenarios[1].thermal_units, 
-            t in 1:T
-    )
 
     eq_min_uptime = _init(model, :eq_min_uptime)
     eq_min_downtime = _init(model, :eq_min_downtime)
 
-    for g in model[:instance].scenarios[1].thermal_units, t in 1:T
-        if sum(switch_on_values[g.name, i] for i in (t-g.min_uptime+1):t if i >= 1) > is_on_values[g.name, t]
-            # Minimum up-time
-            @info "Constraints eq_min_uptime[$(g.name), $t] violated"
-            eq_min_uptime[g.name, t] = @build_constraint(
-                sum(
-                    switch_on[g.name, i] for i in (t-g.min_uptime+1):t if i >= 1
-                ) <= is_on[g.name, t]
-            )
-            MOI.submit(model, Cons(cb_data), eq_min_uptime[g.name, t])
-        end
-        if sum(switch_off_values[g.name, i] for i in (t-g.min_downtime+1):t if i >= 1) > 1 - is_on_values[g.name, t]
-            @info "Constraints eq_min_downtime[$(g.name), $t] violated"
-            # Minimum down-time
-            eq_min_downtime[g.name, t] = @build_constraint(
-                sum(
-                    switch_off[g.name, i] for i in (t-g.min_downtime+1):t if i >= 1
-                ) <= 1 - is_on[g.name, t]
-            )
-            MOI.submit(model, Cons(cb_data), eq_min_downtime[g.name, t])
-        end
-        # Minimum up/down-time for initial periods
-        if t == 1
-            if g.initial_status > 0 && g.min_uptime-g.initial_status >= 1
-                if sum(
-                    switch_off_values[g.name, i] for
-                    i in 1:(g.min_uptime-g.initial_status) if i <= T
-                ) > 0
-                    @info "Constraints eq_min_uptime[$(g.name), 0] violated"
-                    eq_min_uptime[g.name, 0] = @build_constraint(
-                        sum(
-                            switch_off[g.name, i] for
-                            i in 1:(g.min_uptime-g.initial_status) if i <= T
-                        ) == 0
-                    )
-                    MOI.submit(model, Cons(cb_data), eq_min_uptime[g.name, 0])
-                end
-            elseif g.initial_status <= 0 && g.min_downtime+g.initial_status >= 1
-                if sum(
-                    switch_on_values[g.name, i] for
-                    i in 1:(g.min_downtime+g.initial_status) if i <= T
-                ) > 0
-                    @info "Constraints eq_min_downtime[$(g.name), 0] violated"
-                    eq_min_downtime[g.name, 0] = @build_constraint(
-                        sum(
-                            switch_on[g.name, i] for
-                            i in 1:(g.min_downtime+g.initial_status) if i <= T
-                        ) == 0
-                    )
-                    MOI.submit(model, Cons(cb_data), eq_min_downtime[g.name, 0])
-                end
+    stat_conss_added = Dict()
+    for violation in violations
+        g = violation.unit
+        if violation.is_init_vio
+            if violation.is_consec_on
+                # @info "Constraints eq_min_uptime[$(g.name), 0] violated and added"
+                eq_min_uptime[g.name, 0] = @build_constraint(
+                    sum(
+                        switch_off[g.name, i] for
+                        i in 1:(g.min_uptime-g.initial_status) if i <= T
+                    ) == 0
+                )
+                MOI.submit(model, Cons(cb_data), eq_min_uptime[g.name, 0])
+            else
+                # @info "Constraints eq_min_downtime[$(g.name), 0] violated and added"
+                eq_min_downtime[g.name, 0] = @build_constraint(
+                    sum(
+                        switch_on[g.name, i] for
+                        i in 1:(g.min_downtime+g.initial_status) if i <= T
+                    ) == 0
+                )
+                MOI.submit(model, Cons(cb_data), eq_min_downtime[g.name, 0])
+            end
+        else
+            t = violation.time
+            if violation.is_consec_on
+                # @info "Constraints eq_min_uptime[$(g.name), $t] violated and added"
+                eq_min_uptime[g.name, t] = @build_constraint(
+                    sum(
+                        switch_on[g.name, i] for i in (t-g.min_uptime+1):t if i >= 1
+                    ) <= is_on[g.name, t]
+                )
+                MOI.submit(model, Cons(cb_data), eq_min_uptime[g.name, t])
+            else
+                # @info "Constraints eq_min_downtime[$(g.name), $t] violated and added"
+                # Minimum down-time
+                eq_min_downtime[g.name, t] = @build_constraint(
+                    sum(
+                        switch_off[g.name, i] for i in (t-g.min_downtime+1):t if i >= 1
+                    ) <= 1 - is_on[g.name, t]
+                )
+                MOI.submit(model, Cons(cb_data), eq_min_downtime[g.name, t])
             end
         end
+        if !haskey(stat_conss_added, g.name)
+            stat_conss_added[g.name] = 0
+        end
+        stat_conss_added[g.name] += 1
+        return stat_conss_added
     end
-
 end
 
 function _generate_contingency_constraints(cb_data, model, Cons, violations, sc, method)

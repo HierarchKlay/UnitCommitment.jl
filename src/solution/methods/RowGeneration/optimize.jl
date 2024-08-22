@@ -63,7 +63,7 @@ function optimize!(model::JuMP.Model, method::RowGeneration.Method)::Nothing
         )
         JuMP.set_time_limit_sec(model, time_remaining)
         JuMP.optimize!(model)
-
+        
         break
     end
     return

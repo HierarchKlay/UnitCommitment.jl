@@ -131,6 +131,10 @@ function build_mymodel(;
         end
         model[:obj] = AffExpr()
         model[:instance] = instance
+        statistic = UnitCommitment.Statistic()
+        model[:statistic] = statistic
+        all_t_pre_cont::Float64 = 0
+        all_t_post_cont::Float64 = 0
         for g in instance.scenarios[1].thermal_units
             _add_no_startup_cost_unit_commitment!(model, g, formulation, is_min_updown)
         end
@@ -162,17 +166,23 @@ function build_mymodel(;
                     _add_pre_contingency_constraints!(model, sc)
                 end
                 @info @sprintf("Add pre-contingency security constraints in %.2f seconds", time_add_pre_conting)
+                all_t_pre_cont += time_add_pre_conting
             end
             if is_post_contingency
                 time_add_post_conting = @elapsed begin
                     _add_post_contingency_constraints!(model, sc)
                 end
                 @info @sprintf("Add post-contingency security constraints in %.2f seconds", time_add_post_conting)
+                all_t_post_cont += time_add_post_conting
             end
         end
         @objective(model, Min, model[:obj])
     end
     @info @sprintf("Built modified model in %.2f seconds", time_model)
+    statistic.time_build_model["t_pre_cont"] = all_t_pre_cont
+    statistic.time_build_model["t_post_cont"] = all_t_post_cont
+    statistic.time_build_model["time"] = time_model
+
     if variable_names
         _set_names!(model)
     end

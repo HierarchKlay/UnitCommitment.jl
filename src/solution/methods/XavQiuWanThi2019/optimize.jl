@@ -40,6 +40,7 @@ function optimize!(model::JuMP.Model, method::XavQiuWanThi2019.Method)::Nothing
         JuMP.set_time_limit_sec(model, time_remaining)
         @info "Solving MILP..."
         JuMP.optimize!(model)
+        # UnitCommitment.optimize!(model, RowGeneration.Method(is_gen_post_conting=false, is_gen_pre_conting=false))
 
         has_transmission || break
 

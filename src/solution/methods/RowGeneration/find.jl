@@ -181,3 +181,125 @@ function _find_violations_in_callback(;
 
     return violations
 end
+
+function _find_consecutiveness_violation_in_callback(
+    cb_data,
+    model::JuMP.Model,
+    sc::UnitCommitmentScenario;
+    max_per_unit::Int,
+    max_total::Int,
+    method::RowGeneration.Method,
+)::Array{_Consec_Violation,1}
+    is_on = model[:is_on]
+    switch_off = model[:switch_off]
+    switch_on = model[:switch_on]
+
+    T = sc.time
+
+    # Store the incumbent values 
+    is_on_values = Dict((g.name, t) =>
+        callback_value(cb_data, is_on[g.name,t]) 
+        for g in sc.thermal_units, 
+            t in 1:T
+    )
+    switch_off_values = Dict((g.name, t) =>
+        callback_value(cb_data, switch_off[g.name,t]) 
+        for g in sc.thermal_units, 
+            t in 1:T
+    )
+    switch_on_values = Dict((g.name, t) =>
+        callback_value(cb_data, switch_on[g.name,t]) 
+        for g in sc.thermal_units, 
+            t in 1:T
+    )
+
+    filters = Dict(
+        t => _Consec_ViolationFilter(
+            max_total = max_total,
+            max_per_unit = max_per_unit,
+        ) for t in 1:T
+    )
+
+    for g in sc.thermal_units, t in 1:T
+        if sum(switch_on_values[g.name, i] for i in (t-g.min_uptime+1):t if i >= 1) > is_on_values[g.name, t]
+            amount = sum(switch_on_values[g.name, i] for i in (t-g.min_uptime+1):t if i >= 1) - is_on_values[g.name, t]
+            _process(
+                filters[t],
+                _Consec_Violation(
+                    time = t,
+                    unit = g,
+                    is_consec_on = true,
+                    is_init_vio = false,
+                    amount = amount,
+            )
+           ) 
+        end
+
+        if sum(switch_off_values[g.name, i] for i in (t-g.min_downtime+1):t if i >= 1) > 1 - is_on_values[g.name, t]
+            amount = sum(switch_off_values[g.name, i] for i in (t-g.min_downtime+1):t if i >= 1) - 1 + is_on_values[g.name, t]
+            _process(
+                filters[t],
+                _Consec_Violation(
+                    time = t,
+                    unit = g,
+                    is_consec_on = false,
+                    is_init_vio = false,
+                    amount = amount,
+            )
+           ) 
+        end
+
+        if t == 1
+            if g.initial_status > 0 && g.min_uptime-g.initial_status >= 1
+                if sum(
+                    switch_off_values[g.name, i] for
+                    i in 1:(g.min_uptime-g.initial_status) if i <= T
+                ) > 0
+                    amount = sum(
+                        switch_off_values[g.name, i] for
+                        i in 1:(g.min_uptime-g.initial_status) if i <= T
+                    )
+                    _process(
+                        filter[t],
+                        _Consec_Violation(
+                            time = t,
+                            unit = g,
+                            is_consec_on = true,
+                            is_init_vio = true,
+                            amount = amount,
+                        )
+                    )
+                end
+            elseif g.initial_status <= 0 && g.min_downtime+g.initial_status >= 1
+                if sum(
+                    switch_on_values[g.name, i] for
+                    i in 1:(g.min_downtime+g.initial_status) if i <= T
+                ) > 0
+                    amount = sum(
+                        switch_on_values[g.name, i] for
+                        i in 1:(g.min_downtime+g.initial_status) if i <= T
+                    )
+                    _process(
+                        filter[t],
+                        _Consec_Violation(
+                            time = t,
+                            unit = g,
+                            is_consec_on = false,
+                            is_init_vio = true,
+                            amount = amount,
+                        )
+                    )
+                end
+            end
+        end
+                    
+    end
+
+    consec_vios = _Consec_Violation[]
+    for t in 1:T
+        append!(consec_vios, _concat(filters[t]))
+    end
+
+    return consec_vios
+
+end
