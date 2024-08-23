@@ -32,7 +32,7 @@ mutable struct Method <: SolutionMethod
     function Method(;
         time_limit::Float64 = 7200.0,
         gap_limit::Float64 = 1e-3,
-        is_gen_min_time::Bool = true,
+        is_gen_min_time::Bool = false,
         is_gen_pre_conting::Bool = true,
         is_gen_post_conting::Bool = true,
         max_violations_per_line::Int = 1,

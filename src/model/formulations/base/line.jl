@@ -97,12 +97,12 @@ function _add_pre_contingency_constraints!(
     eq_preconting_flow_def = _init(model, :eq_preconting_flow_def)
 
     for t in 1:model[:instance].time, lm in sc.lines
-        flow = @variable(model, base_name = "flow[$(lm.name),$t]")
         limit = lm.normal_flow_limit[t]
+        flow = @variable(model, base_name = "flow[$(lm.name),$t]", upper_bound=limit, lower_bound=-limit)
         v = overflow[sc.name, lm.name, t]
 
-        eq_preconting_uplimit[sc.name, lm.name, t] = @constraint(model, flow <= limit + v)
-        eq_preconting_downlimit[sc.name, lm.name, t] = @constraint(model, -flow <= limit + v)
+        # eq_preconting_uplimit[sc.name, lm.name, t] = @constraint(model, flow <= limit + v)
+        # eq_preconting_downlimit[sc.name, lm.name, t] = @constraint(model, -flow <= limit + v)
 
         eq_preconting_flow_def[sc.name, lm.name, t] = @constraint(
             model,
@@ -132,12 +132,12 @@ function _add_post_contingency_constraints!(
         length(conting.thermal_units) == 0 || error("The package does NOT support thermal units contingency yet.")
         
         lc = conting.lines[1]
-        flow = @variable(model, base_name = "flow[$(lm.name),$(lc.name),$t]")
         limit = lm.emergency_flow_limit[t]
+        flow = @variable(model, base_name = "flow[$(lm.name),$(lc.name),$t]", upper_bound=limit, lower_bound=-limit)
         v = overflow[sc.name, lm.name, t]
 
-        eq_postconting_uplimit[sc.name, lm.name, lc.name, t] = @constraint(model, flow <= limit + v)
-        eq_postconting_downlimit[sc.name, lm.name, lc.name, t] = @constraint(model, -flow <= limit + v)
+        # eq_postconting_uplimit[sc.name, lm.name, lc.name, t] = @constraint(model, flow <= limit + v)
+        # eq_postconting_downlimit[sc.name, lm.name, lc.name, t] = @constraint(model, -flow <= limit + v)
 
         eq_postconting_flow_def[sc.name, lm.name, lc.name, t] = @constraint(
             model,

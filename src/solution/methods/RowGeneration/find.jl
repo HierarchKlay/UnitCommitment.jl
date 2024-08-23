@@ -198,17 +198,23 @@ function _find_consecutiveness_violation_in_callback(
 
     # Store the incumbent values 
     is_on_values = Dict((g.name, t) =>
-        callback_value(cb_data, is_on[g.name,t]) 
+        (isa(is_on[g.name, t], JuMP.GenericVariableRef) ? 
+            callback_value(cb_data, is_on[g.name, t]) : 
+            is_on[g.name, t]) 
         for g in sc.thermal_units, 
             t in 1:T
     )
     switch_off_values = Dict((g.name, t) =>
-        callback_value(cb_data, switch_off[g.name,t]) 
+        (isa(is_on[g.name, t], JuMP.GenericVariableRef) ? 
+            callback_value(cb_data, switch_off[g.name, t]) : 
+            switch_off[g.name, t])
         for g in sc.thermal_units, 
             t in 1:T
     )
     switch_on_values = Dict((g.name, t) =>
-        callback_value(cb_data, switch_on[g.name,t]) 
+        (isa(is_on[g.name, t], JuMP.GenericVariableRef) ? 
+            callback_value(cb_data, switch_on[g.name, t]) : 
+            switch_on[g.name, t])
         for g in sc.thermal_units, 
             t in 1:T
     )
@@ -260,7 +266,7 @@ function _find_consecutiveness_violation_in_callback(
                         i in 1:(g.min_uptime-g.initial_status) if i <= T
                     )
                     _process(
-                        filter[t],
+                        filters[t],
                         _Consec_Violation(
                             time = t,
                             unit = g,
@@ -280,7 +286,7 @@ function _find_consecutiveness_violation_in_callback(
                         i in 1:(g.min_downtime+g.initial_status) if i <= T
                     )
                     _process(
-                        filter[t],
+                        filters[t],
                         _Consec_Violation(
                             time = t,
                             unit = g,

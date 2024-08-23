@@ -21,7 +21,7 @@ end
 # solve the security constrained unit commitment problem with callback on min updown time constraints
 function callback_optimize!(;
     model::JuMP.Model,
-    is_gen_min_time::Bool = true,
+    is_gen_min_time::Bool = false,
     is_gen_pre_conting::Bool = true,
     is_gen_post_conting::Bool = true,
 )::Nothing
