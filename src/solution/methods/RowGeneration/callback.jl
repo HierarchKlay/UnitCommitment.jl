@@ -6,13 +6,7 @@ function _callback_function(cb_data, isLazy, model, method)
     # When obtaining an incumbent of the original problems, do the callback
     if status == MOI.CALLBACK_NODE_STATUS_INTEGER
         @info "Do callback now..."
-        statistic = model[:statistic]
-        solt = statistic.time_solve_model
-        solt.callback["ver_consec"] = 0
-        solt.callback["add_consec"] = 0
-        solt.callback["ver_conting"] = 0
-        solt.callback["add_conting"] = 0
-
+        solt = model[:statistic].time_solve_model
         if method.is_gen_min_time
             @info "Verifying min-consecutiveness requirement"
             start_time = time()
@@ -94,6 +88,7 @@ function _callback_function(cb_data, isLazy, model, method)
             end
 
             if violations_found
+                solt.callback["count_conting"] += sum(length, violations)
                 start_time = time()
                 for (i, v) in enumerate(violations)
                     _generate_contingency_constraints(cb_data, model, Cons, v, model[:instance].scenarios[i], method)

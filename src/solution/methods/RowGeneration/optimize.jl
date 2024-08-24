@@ -61,6 +61,13 @@ function optimize!(model::JuMP.Model, method::RowGeneration.Method)::Nothing
             "Setting MILP time limit to %.2f seconds",
             time_remaining
         )
+        statistic = model[:statistic]
+        solt = statistic.time_solve_model
+        solt.callback["ver_consec"] = 0.0
+        solt.callback["add_consec"] = 0.0
+        solt.callback["ver_conting"] = 0.0
+        solt.callback["add_conting"] = 0.0
+        solt.callback["count_conting"] = 0
         JuMP.set_time_limit_sec(model, time_remaining)
         JuMP.optimize!(model)
         
