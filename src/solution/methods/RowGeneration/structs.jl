@@ -22,32 +22,41 @@ Fields
 mutable struct Method <: SolutionMethod
     time_limit::Float64
     gap_limit::Float64
+    is_root_check::Bool
     is_gen_min_time::Bool
     is_gen_pre_conting::Bool
     is_gen_post_conting::Bool
+    is_early_stopped::Bool
     max_violations_per_line::Int
     max_violations_per_period::Int
     max_violations_per_unit::Int
+    max_search_per_period::Int
 
     function Method(;
-        time_limit::Float64 = 7200.0,
+        time_limit::Float64 = 3600.0,
         gap_limit::Float64 = 1e-3,
+        is_root_check::Bool = false,
         is_gen_min_time::Bool = false,
         is_gen_pre_conting::Bool = true,
         is_gen_post_conting::Bool = true,
+        is_early_stopped::Bool = false,
         max_violations_per_line::Int = 1,
         max_violations_per_period::Int = 5,
         max_violations_per_unit::Int = 1,
+        max_search_per_period::Int = 5,
     )
         return new(
             time_limit,
             gap_limit,
+            is_root_check,
             is_gen_min_time,
             is_gen_pre_conting,
             is_gen_post_conting,
+            is_early_stopped,
             max_violations_per_line,
             max_violations_per_period,
             max_violations_per_unit,
+            max_search_per_period,
         )
     end
     

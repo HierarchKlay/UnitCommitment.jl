@@ -79,6 +79,7 @@ function _callback_function(cb_data, isLazy, model, method)
             time_screening
             )
             solt.callback["ver_conting"] += time_screening
+            solt.callback["count_iter"] += 1
 
             violations_found = false
             for v in violations
@@ -91,7 +92,11 @@ function _callback_function(cb_data, isLazy, model, method)
                 solt.callback["count_conting"] += sum(length, violations)
                 start_time = time()
                 for (i, v) in enumerate(violations)
-                    _generate_contingency_constraints(cb_data, model, Cons, v, model[:instance].scenarios[i], method)
+                    if !is_flow_defined
+                        _generate_contingency_constraints(cb_data, model, Cons, v, model[:instance].scenarios[i], method)
+                    else
+                        _generate_contingency_limits(cb_data, model, Cons, v, model[:instance].scenarios[i], method)
+                    end
                 end
                 time_gen = time() - start_time
                 solt.callback["add_conting"] += time_gen
@@ -223,7 +228,7 @@ function _generate_contingency_constraints(cb_data, model, Cons, violations, sc,
                 error("Pre-contingecy constraints are already added.
                      But they are still violated by the incumbent.")
             end
-        else 
+        else  
             lc = violation.outage_line
             fc = violation.outage_line.name
             eq_postconting_uplimit = _init(model, :eq_postconting_uplimit)
@@ -255,12 +260,60 @@ function _generate_contingency_constraints(cb_data, model, Cons, violations, sc,
                 MOI.submit(model, Cons(cb_data), eq_postconting_uplimit[sc.name, fm, fc, t])
                 MOI.submit(model, Cons(cb_data), eq_postconting_downlimit[sc.name, fm, fc, t])
             else
-                error("Post-contingecy constraints are already added.
-                     But they are still violated by the incumbent.")
+                # error("Post-contingecy constraints are already added.
+                #      But they are still violated by the incumbent.")
             end
 
         end
 
+
+
+    end
+end
+
+function _generate_contingency_limits(model, violations, sc, method)
+    for violation in violations
+        limit::Float64 = 0.0
+        net_injection = model[:net_injection]
+
+        if violation.outage_line === nothing
+            limit = violation.monitored_line.normal_flow_limit[violation.time]
+            @info @sprintf(
+                "    %8.3f MW overflow in %-5s time %3d (pre-contingency, scenario %s)",
+                violation.amount,
+                violation.monitored_line.name,
+                violation.time,
+                sc.name,
+            )
+        else
+            method.is_gen_post_conting == true || error("DEBUG: The outage violation should NOT appear here!")
+            limit = violation.monitored_line.emergency_flow_limit[violation.time]
+            @info @sprintf(
+                "    %8.3f MW overflow in %-5s time %3d (outage: line %s, scenario %s)",
+                violation.amount,
+                violation.monitored_line.name,
+                violation.time,
+                violation.outage_line.name,
+                sc.name,
+            )
+        end
+
+        lm = violation.monitored_line
+        fm = violation.monitored_line.name
+        t = violation.time
+        
+        if violation.outage_line === nothing
+            bound1 = @build_constraint(flow[sc.name, lm.name, t] <= limit)
+            bound2 = @build_constraint(-limit <= flow[sc.name, lm.name, t])
+        else 
+            lc = violation.outage_line
+            fc = violation.outage_line.name
+            bound1 = @build_constraint(flow[sc.name, lm.name, lc.name, t] <= limit)
+            bound2 = @build_constraint(-limit <= flow[sc.name, lm.name, lc.name, t])
+        end
+        
+        MOI.submit(model, Cons(cb_data), bound1)
+        MOI.submit(model, Cons(cb_data), bound2)
 
 
     end

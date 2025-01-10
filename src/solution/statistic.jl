@@ -9,6 +9,8 @@ function statistic(
     statistic = model[:statistic]
     statistic.time_solve_model.total = JuMP.solve_time(model)
     statistic.num_node = JuMP.node_count(model)
+    statistic.obj = JuMP.objective_value(model)
+    statistic.gap = JuMP.relative_gap(model)
     return statistic
 end
 
@@ -19,6 +21,8 @@ function statistic(
     statistic = model[:statistic]
     statistic.time_solve_model.total = JuMP.solve_time(model)
     statistic.num_node = JuMP.node_count(model)
+    statistic.obj = JuMP.objective_value(model)
+    statistic.gap = JuMP.relative_gap(model)
     return statistic
 end
 
@@ -28,6 +32,19 @@ function statistic(
 )::Statistic    
     statistic = model[:statistic]
     statistic.num_node = statistic.num_node / statistic.time_solve_model.tcf["count_iter"]
+    statistic.obj = JuMP.objective_value(model)
+    statistic.gap = JuMP.relative_gap(model)
+    return statistic
+end
+
+function statistic(
+    model::JuMP.Model,
+    method::XQWT2019_mod.Method,
+)::Statistic    
+    statistic = model[:statistic]
+    statistic.num_node = statistic.num_node / statistic.time_solve_model.tcf["count_iter"]
+    statistic.obj = JuMP.objective_value(model)
+    statistic.gap = JuMP.relative_gap(model)
     return statistic
 end
 
@@ -46,6 +63,8 @@ mutable struct Statistic
     time_build_model::OrderedDict{AbstractString, Float64}
     time_solve_model::SolveStat
     num_node::Union{Int, Float64}
+    obj::Float64
+    gap::Float64
     
     Statistic() = new(
         nothing,
@@ -55,6 +74,7 @@ mutable struct Statistic
             OrderedDict{AbstractString, Union{Float64, Int}}(), 
             OrderedDict{AbstractString, Union{Float64, Int}}(),
         ),
+        0,
         0,
     )
 

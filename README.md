@@ -20,9 +20,36 @@ This package is a modification of the original [UnitCommitment.jl](https://githu
       is_post_contingency::Bool = true,
   )::JuMP.Model
   ```
-- **Purpose**: The **build_mymodel** function is an adaptation of the original **build_model** function. It constructs a model that excludes constraints and objective terms related to  **startup costs** ,  **bus curtailment** , and  **reserve shortfall penalties** . Additionally, this model does not account for  **profiled generators** ,  **price-sensitive loads** , or  **energy storage** . However, it provides flexibility by allowing the inclusion or exclusion of **pre-contingency and post-contingency security constraints and min up/down time constraints** through specific parameters.
+- **Purpose**: The `build_mymodel` function is an adaptation of the original  `build_model` function. It constructs a model that excludes constraints and objective terms related to:
+  - **Startup costs**
+  - **Bus curtailment**
+  - **Reserve shortfall penalties**
+- Additionally, this model does not account for:
+  - **Profiled generators**
+  - **Price-sensitive loads**
+  - **Energy storage**
+- However, it provides flexibility by allowing the inclusion or exclusion of:
+  - **Pre-contingency and post-contingency security constraints**
+  - **Min up/down time constraints** through specific parameters.
 
-### 2. Function `direct_optimize!`
+### 2. Function `statistic`
+
+* **Description** :
+
+  ```julia
+  function statistic(model::JuMP.Model)::Statistic
+  ```
+* **Purpose** : This function collects and returns comprehensive solution statistics from the model, including:
+
+  * Build time metrics
+  * Solve time details
+  * Number of nodes processed
+  * Objective value
+  * Optimality gap
+
+## New Methods
+
+### 1. Function `direct_optimize!`
 
 - **Description**:
 
@@ -30,6 +57,65 @@ This package is a modification of the original [UnitCommitment.jl](https://githu
   function direct_optimize!(model::JuMP.Model)::Nothing
   ```
 - **Purpose**: The `direct_optimize!` function provides an alternative to the original `optimize!` function. Unlike `optimize!`, which employs the [**Transmission Constraint Filtering**](https://ieeexplore.ieee.org/document/8613085) method to solve the problem, `direct_optimize!` directly solves the original model without any filtering, offering a more straightforward optimization approach.
+
+### 2. Function `optimize!`
+
+* **Description** :
+
+```julia
+function optimize!(model::JuMP.Model;
+    is_early_stopped::Bool = false,
+    max_search_per_period::Int = 5,
+    max_violations_per_line::Int = 1,
+    max_violations_per_period::Int = 5,
+)::Nothing
+```
+
+
+* **Purpose** : An enhanced version of the original `optimize!` function that provides control over the constraint filtering process. It offers two approaches:
+
+  * When `is_early_stopped = true`: Adds surrogate constraints based on the methodology described in [this research paper](https://kns.cnki.net/kcms2/article/abstract?v=rdiHbV4QUxbzu_3bb68Q9311pxOjEgh_ZabGH-R2qgN_NqzD2vRwG4pG8p5ReAR2Xewu90i2aOD7ZitTFvpGqWPAlxdlDjmSpAQgcK4nPTZCObS_u6GG7q7AYXxJu91qgzCECH6YsBrnfSe_t-YRxiIkyptYXzyEae4d6TMJK72rJ5Xge5IOA9MaJKHQ1915&uniplatform=NZKPT&language=CHS)
+  * When `is_early_stopped = false`: Uses original TCF method to add the most violated constraints
+* **Parameters** :
+
+  * `max_search_per_period`: Limits the number of constraints searched per period (active when `is_early_stopped = true`)
+  * `max_violations_per_line`: Limits the number of violated constraints added per transmission line
+  * `max_violations_per_period`: Limits the number of violated constraints added per period
+
+### 3. Function `callback_optimize!`
+
+* **Description** :
+
+```julia
+function callback_optimize!(;
+    model::JuMP.Model,
+    is_root_check::Bool = false,
+    is_gen_min_time::Bool = false,
+    is_gen_pre_conting::Bool = true,
+    is_gen_post_conting::Bool = true,
+    is_early_stopped::Bool = false,
+    max_search_per_period::Int = 5,
+    max_violations_per_period::Int = 5,
+)::Nothing
+```
+
+* **Purpose** : Solves the security constrained unit commitment problem using [Surrogate Lazy Constraint Filtering (SLCF) method](https://kns.cnki.net/kcms2/article/abstract?v=rdiHbV4QUxbzu_3bb68Q9311pxOjEgh_ZabGH-R2qgN_NqzD2vRwG4pG8p5ReAR2Xewu90i2aOD7ZitTFvpGqWPAlxdlDjmSpAQgcK4nPTZCObS_u6GG7q7AYXxJu91qgzCECH6YsBrnfSe_t-YRxiIkyptYXzyEae4d6TMJK72rJ5Xge5IOA9MaJKHQ1915&uniplatform=NZKPT&language=CHS). This function provides fine-grained control over constraint generation and filtering strategies.
+* **Parameters** :
+
+  * `is_root_check`: Controls whether to use LP relaxation at root node for generating violated constraints (experimental feature, may be unstable)
+  * `is_gen_min_time`: Determines if min up/down time constraints should be generated
+  * `is_gen_pre_conting`: Controls generation of pre-contingency constraints
+  * `is_gen_post_conting`: Controls generation of post-contingency constraints
+  * `is_early_stopped`: Determines whether to use surrogate constraints (see `optimize!` function)
+  * `max_search_per_period`: Limits the number of surrogate constraints per period
+  * `max_violations_per_period`: Maximum number of violated constraints to add per time period
+* `is_root_check`: Controls whether to use LP relaxation at root node for generating violated constraints
+* `is_gen_min_time`: Determines if min up/down time constraints should be generated
+* `is_gen_pre_conting`: Controls generation of pre-contingency constraints
+* `is_gen_post_conting`: Controls generation of post-contingency constraints
+* `is_early_stopped`: Determines whether to use surrogate constraints (see `optimize!` function)
+* `max_search_per_period`: Limits the number of constraints searched per period
+* `max_violations_per_period`: Limits the number of violated constraints added per period
 
 ## Tutorial: How to Add a Local Julia Package
 
@@ -51,7 +137,8 @@ Replace `"/path-to-repository"` with the actual path to the cloned repository on
 ## Branches
 
 + `dev`: This branch contains the original, unmodified version of the package.
-+ `240815`:  This branch includes the modified version of the package with the updates and enhancements that I’ve implemented.
++ `240815`: This branch includes modifications to implement `build_mymodel` and `direct_optimize!` functions, while retaining all other original package functionality.
++ `callback_mintime`:  This branch includes the modified version of the package with the updates and enhancements that I’ve implemented.
 
 ## License
 
