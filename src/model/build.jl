@@ -121,7 +121,7 @@ function build_mymodel(;
     variable_names::Bool = false,
     is_min_updown::Bool = true,
     is_pre_contingency::Bool = true,
-    is_post_contingency::Bool = true,
+    is_post_contingency::Bool = false,
 )::JuMP.Model
     @info "Building modified model..."
     time_model = @elapsed begin
@@ -133,15 +133,22 @@ function build_mymodel(;
         model[:instance] = instance
         statistic = UnitCommitment.Statistic()
         model[:statistic] = statistic
+        # assigning whether to consider reserve in the ramping constraints
+        model[:RESERVES_WHEN_START_UP] = false
+        model[:RESERVES_WHEN_RAMP_UP] = false
+        model[:RESERVES_WHEN_RAMP_DOWN] = false
+        model[:RESERVES_WHEN_SHUT_DOWN] = false
         all_t_pre_cont::Float64 = 0
         all_t_post_cont::Float64 = 0
         for g in instance.scenarios[1].thermal_units
-            _add_no_startup_cost_unit_commitment!(model, g, formulation, is_min_updown)
+            _add_no_startup_delay_cost_unit_commitment!(model, g, formulation, is_min_updown)
         end
         for sc in instance.scenarios
             @info "Building scenario $(sc.name) with " *
                   "probability $(sc.probability)"
-            _setup_transmission(formulation.transmission, sc)
+            if is_pre_contingency || is_post_contingency
+                _setup_transmission(formulation.transmission, sc)
+            end
             for l in sc.lines
                 _add_restricted_transmission_line!(model, l, formulation.transmission, sc)
             end

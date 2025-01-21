@@ -11,10 +11,10 @@ function _add_ramp_eqs!(
     sc::UnitCommitmentScenario,
 )::Nothing
     # TODO: Move upper case constants to model[:instance]
-    RESERVES_WHEN_START_UP = true
-    RESERVES_WHEN_RAMP_UP = true
-    RESERVES_WHEN_RAMP_DOWN = true
-    RESERVES_WHEN_SHUT_DOWN = true
+    RESERVES_WHEN_START_UP = haskey(model, :RESERVES_WHEN_START_UP) ? model[:RESERVES_WHEN_START_UP] : true
+    RESERVES_WHEN_RAMP_UP = haskey(model, :RESERVES_WHEN_RAMP_UP) ? model[:RESERVES_WHEN_RAMP_UP] : true
+    RESERVES_WHEN_RAMP_DOWN = haskey(model, :RESERVES_WHEN_RAMP_DOWN) ? model[:RESERVES_WHEN_RAMP_DOWN] : true
+    RESERVES_WHEN_SHUT_DOWN = haskey(model, :RESERVES_WHEN_SHUT_DOWN) ? model[:RESERVES_WHEN_SHUT_DOWN] : true
     is_initially_on = (g.initial_status > 0)
     SU = g.startup_limit
     SD = g.shutdown_limit

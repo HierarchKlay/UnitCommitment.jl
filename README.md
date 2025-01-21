@@ -17,17 +17,18 @@ This package is a modification of the original [UnitCommitment.jl](https://githu
       variable_names::Bool = false,
       is_min_updown::Bool = true,
       is_pre_contingency::Bool = true,
-      is_post_contingency::Bool = true,
+      is_post_contingency::Bool = false,
   )::JuMP.Model
   ```
 - **Purpose**: The `build_mymodel` function is an adaptation of the original  `build_model` function. It constructs a model that excludes constraints and objective terms related to:
-  - **Startup costs**
+  - **Startup costs of delays** (Only basic startup costs are considered)
   - **Bus curtailment**
   - **Reserve shortfall penalties**
 - Additionally, this model does not account for:
   - **Profiled generators**
   - **Price-sensitive loads**
   - **Energy storage**
+  - Reserve terms in ramping constraints
 - However, it provides flexibility by allowing the inclusion or exclusion of:
   - **Pre-contingency and post-contingency security constraints**
   - **Min up/down time constraints** through specific parameters.
@@ -46,6 +47,7 @@ This package is a modification of the original [UnitCommitment.jl](https://githu
   * Number of nodes processed
   * Objective value
   * Optimality gap
+  * Additional special statistics for various methods
 
 ## New Methods
 
@@ -70,7 +72,6 @@ function optimize!(model::JuMP.Model;
     max_violations_per_period::Int = 5,
 )::Nothing
 ```
-
 
 * **Purpose** : An enhanced version of the original `optimize!` function that provides control over the constraint filtering process. It offers two approaches:
 
@@ -136,9 +137,9 @@ Replace `"/path-to-repository"` with the actual path to the cloned repository on
 
 ## Branches
 
++ `master`:  This branch includes the modified version of the package with the updates and enhancements that I’ve implemented.
 + `dev`: This branch contains the original, unmodified version of the package.
 + `240815`: This branch includes modifications to implement `build_mymodel` and `direct_optimize!` functions, while retaining all other original package functionality.
-+ `callback_mintime`:  This branch includes the modified version of the package with the updates and enhancements that I’ve implemented.
 
 ## License
 

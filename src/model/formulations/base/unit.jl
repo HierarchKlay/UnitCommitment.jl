@@ -28,11 +28,10 @@ function _add_unit_commitment!(
     return
 end
 
-# Function for adding variables, constraints, and objective function terms
-# related to the binary commitment, startup and shutdown decisions of units
-# adding min uptime downtime constraints based on parameter `is_min_updown`
-# Constraints and objective terms related to startup penalty is omitted in this formulation
-function _add_no_startup_cost_unit_commitment!(
+# This is a simplified version of the `_add_unit_commitment!` function
+# that does not include startup delays costs. In this formulation, we  
+# consider the constant start up cost for each unit.
+function _add_no_startup_delay_cost_unit_commitment!(
     model::JuMP.Model,
     g::ThermalUnit,
     formulation::Formulation,
@@ -54,6 +53,25 @@ function _add_no_startup_cost_unit_commitment!(
         _add_min_uptime_downtime_eqs!(model, g)
     end
     # _add_startup_cost_eqs!(model, g, formulation.startup_costs)
+    # Add startup constraints and costs
+    eq_startup_choose = _init(model, :eq_startup_choose)
+    startup = model[:startup]
+    for t in 1:model[:instance].time
+        # If unit is switching on, we must choose a startup category
+        eq_startup_choose[g.name, t] = @constraint(
+            model,
+            model[:switch_on][g.name, t] == 
+            startup[g.name, t, 1]
+        )
+        
+        # Objective function terms for start-up costs
+        add_to_expression!(
+            model[:obj],
+            startup[g.name, t, 1],
+            g.startup_categories[1].cost,
+        )
+    end
+
     _add_status_eqs!(model, g, formulation.status_vars)
     _add_commitment_status_eqs!(model, g)
     return
@@ -183,11 +201,18 @@ function _add_startup_shutdown_limit_eqs!(
     switch_off = model[:switch_off]
     switch_on = model[:switch_on]
     T = model[:instance].time
+    RESERVES_WHEN_START_UP = haskey(model, :RESERVES_WHEN_START_UP) ? model[:RESERVES_WHEN_START_UP] : true
+    RESERVES_WHEN_RAMP_UP = haskey(model, :RESERVES_WHEN_RAMP_UP) ? model[:RESERVES_WHEN_RAMP_UP] : true
     for t in 1:T
         # Startup limit
         eq_startup_limit[sc.name, g.name, t] = @constraint(
             model,
-            prod_above[sc.name, g.name, t] + reserve[t] <=
+            prod_above[sc.name, g.name, t] + 
+            (
+                RESERVES_WHEN_START_UP || RESERVES_WHEN_RAMP_UP ?
+                reserve[t] : 0.0
+            ) 
+            <=
             (g.max_power[t] - g.min_power[t]) * is_on[g.name, t] -
             max(0, g.max_power[t] - g.startup_limit) * switch_on[g.name, t]
         )
