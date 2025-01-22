@@ -11,14 +11,16 @@ import ..SolutionMethod
         two_phase_gap::Bool
         max_violations_per_line::Int
         max_violations_per_period::Int
+        max_search_per_period::Int
     end
 
-Lazy constraint solution method described in:
+Surrogate constraint filter method described in:
 
-    Xavier, A. S., Qiu, F., Wang, F., & Thimmapuram, P. R. (2019). Transmission
-    constraint filtering in large-scale security-constrained unit commitment. 
-    IEEE Transactions on Power Systems, 34(3), 2457-2460.
-    DOI: https://doi.org/10.1109/TPWRS.2019.2892620
+    TANG Yu-Yang, CHEN Liang, CHEN Sheng-Jie. 
+    Surrogate Lazy Constraint Filtering Method for 
+    the Security-Constrained Unit Commitment Problem[J]. 
+    Journal of Xiangtan University (Natural Science Edition), 2024 
+    DOI:10.13715/j.issn.2096-644X.20240910.0001.
 
 Fields
 ------
@@ -36,6 +38,9 @@ Fields
 - `max_violations_per_period`:
     maximum number of violated transmission constraints to add to the
     formulation per time period.
+- `max_search_per_period`:
+    maximum number of transmission constraints searched per time period
+    in each iteration.
 
 """
 mutable struct Method <: SolutionMethod
@@ -65,31 +70,3 @@ mutable struct Method <: SolutionMethod
     end
 end
 end
-
-# import DataStructures: PriorityQueue
-
-# struct _Violation
-#     time::Int
-#     monitored_line::TransmissionLine
-#     outage_line::Union{TransmissionLine,Nothing}
-#     amount::Float64
-
-#     function _Violation(;
-#         time::Int,
-#         monitored_line::TransmissionLine,
-#         outage_line::Union{TransmissionLine,Nothing},
-#         amount::Float64,
-#     )
-#         return new(time, monitored_line, outage_line, amount)
-#     end
-# end
-
-# mutable struct _ViolationFilter
-#     max_per_line::Int
-#     max_total::Int
-#     queues::Dict{Int,PriorityQueue{_Violation,Float64}}
-
-#     function _ViolationFilter(; max_per_line::Int = 1, max_total::Int = 5)
-#         return new(max_per_line, max_total, Dict())
-#     end
-# end

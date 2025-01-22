@@ -8,7 +8,25 @@ import ..SolutionMethod
     mutable struct Method
         time_limit::Float64
         gap_limit::Float64
+        is_root_check::Bool
+        is_gen_min_time::Bool
+        is_gen_pre_conting::Bool
+        is_gen_post_conting::Bool
+        is_early_stopped::Bool
+        max_violations_per_line::Int
+        max_violations_per_period::Int
+        max_violations_per_unit::Int
+        max_search_per_period::Int
     end
+
+Row generation method described in:
+
+    TANG Yu-Yang, CHEN Liang, CHEN Sheng-Jie. 
+    Surrogate Lazy Constraint Filtering Method for 
+    the Security-Constrained Unit Commitment Problem[J]. 
+    Journal of Xiangtan University (Natural Science Edition), 2024 
+    DOI:10.13715/j.issn.2096-644X.20240910.0001.
+
 
 Fields
 ------
@@ -17,6 +35,29 @@ Fields
     the time limit over the entire optimization procedure.
 - `gap_limit`: 
     the desired relative optimality gap. 
+- `is_root_check`:
+    if true, check for violated constraints at the root node.
+- `is_gen_min_time`:
+    if true, generate minimum time constraints as lazy constraints.
+- `is_gen_pre_conting`:
+    if true, generate pre-contingency constraints as lazy constraints.
+- `is_gen_post_conting`:
+    if true, generate post-contingency constraints as lazy constraints.
+- `is_early_stopped`:
+    if true, stop the checking procedure on violated constraints when number
+    of checked constraints exceeds the limit.
+- `max_violations_per_line`:
+    maximum number of violated transmission constraints to add to the
+    formulation per transmission line.
+- `max_violations_per_period`:
+    maximum number of violated transmission constraints to add to the
+    formulation per time period.
+- `max_violations_per_unit`:
+    maximum number of violated transmission constraints to add to the
+    formulation per thermal unit.
+- `max_search_per_period`:
+    maximum number of transmission constraints searched per time period
+    in each iteration.
 
 """
 mutable struct Method <: SolutionMethod
