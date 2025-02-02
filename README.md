@@ -140,6 +140,7 @@ Replace `"/path-to-repository"` with the actual path to the cloned repository on
 + `master`:  This branch includes the modified version of the package with the updates and enhancements that I’ve implemented.
 + `dev`: This branch contains the original, unmodified version of the package.
 + `240815`: This branch includes modifications to implement `build_mymodel` and `direct_optimize!` functions, while retaining all other original package functionality.
++ `cg`: This branch is dedicated to the development of a column generation-based method, along with some minor modifications and improvements.
 
 ## License
 
