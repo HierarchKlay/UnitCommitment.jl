@@ -58,3 +58,15 @@ function callback_optimize!(;
     )
     return UnitCommitment.optimize!(model, model[:statistic].method)
 end
+
+function CG_optimize!(;
+    instance::UnitCommitmentInstance,
+    mas_optimizer = nothing, 
+    sub_optimizer = nothing,  
+)
+    method = ColumnGeneration.Method(
+        master_params=ColumnGeneration.MasterParams(solver=mas_optimizer),
+        sub_params=ColumnGeneration.SubParams(solver=sub_optimizer)
+    )
+    return UnitCommitment.optimize!(instance, method)
+end

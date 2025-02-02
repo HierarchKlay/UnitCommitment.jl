@@ -7,6 +7,7 @@ function _callback_function(cb_data, isLazy, model, method)
     if status == MOI.CALLBACK_NODE_STATUS_INTEGER
         @info "Do callback now..."
         solt = model[:statistic].time_solve_model
+        callback = model[:statistic].others.callback
         if method.is_gen_min_time
             @info "Verifying min-consecutiveness requirement"
             start_time = time()
@@ -25,7 +26,7 @@ function _callback_function(cb_data, isLazy, model, method)
                 ) 
             end
             @info @sprintf("Verified min-consecutiveness requirement in %.2f seconds", time()-start_time)
-            solt.callback["ver_consec"] += time()-start_time
+            solt["t_ver_consec"] += time()-start_time
 
             is_consec_vio_found = false
             for v in consec_vios
@@ -43,7 +44,7 @@ function _callback_function(cb_data, isLazy, model, method)
                     end
                 end
                 @info @sprintf("Added min_updown_time constraints in %.2f seconds", time()-start_time)
-                solt.callback["add_consec"] += time()-start_time
+                solt["t_add_consec"] += time()-start_time
             else
                 @info "No consecutive violation found"
             end
@@ -78,8 +79,8 @@ function _callback_function(cb_data, isLazy, model, method)
             "Verified transmission limits in %.2f seconds",
             time_screening
             )
-            solt.callback["ver_conting"] += time_screening
-            solt.callback["count_iter"] += 1
+            solt["t_ver_conting"] += time_screening
+            callback["count_iter"] += 1
 
             violations_found = false
             for v in violations
@@ -89,7 +90,7 @@ function _callback_function(cb_data, isLazy, model, method)
             end
 
             if violations_found
-                solt.callback["count_conting"] += sum(length, violations)
+                callback["count_conting"] += sum(length, violations)
                 start_time = time()
                 for (i, v) in enumerate(violations)
                     if !is_flow_defined
@@ -99,7 +100,7 @@ function _callback_function(cb_data, isLazy, model, method)
                     end
                 end
                 time_gen = time() - start_time
-                solt.callback["add_conting"] += time_gen
+                solt["t_add_conting"] += time_gen
             else
                 @info "No violations found"
             end

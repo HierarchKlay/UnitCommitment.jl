@@ -27,8 +27,10 @@ function optimize!(model::JuMP.Model, method::XavQiuWanThi2019.Method)::Nothing
         end
     end
     statistic = model[:statistic]
-    tcf = statistic.time_solve_model.tcf
-    tcf["ver_cont"] = 0.0
+    solt = statistic.time_solve_model
+    solt["total"] = 0.0
+    solt["t_ver_cont"] = 0.0
+    tcf = statistic.others.tcf
     tcf["count_cont"] = 0
     tcf["count_iter"] = 0
     while true
@@ -46,7 +48,7 @@ function optimize!(model::JuMP.Model, method::XavQiuWanThi2019.Method)::Nothing
         @info "Solving MILP..."
         JuMP.optimize!(model)
         # UnitCommitment.optimize!(model, RowGeneration.Method(is_gen_post_conting=false, is_gen_pre_conting=false))
-        statistic.time_solve_model.total += JuMP.solve_time(model)
+        solt["total"] += JuMP.solve_time(model)
         statistic.num_node += JuMP.node_count(model)
         tcf["count_iter"] += 1
         has_transmission || break
@@ -70,7 +72,7 @@ function optimize!(model::JuMP.Model, method::XavQiuWanThi2019.Method)::Nothing
             "Verified transmission limits in %.2f seconds",
             time_screening
         )
-        tcf["ver_cont"] += time_screening
+        solt["t_ver_cont"] += time_screening
         violations_found = false
         for v in violations
             if !isempty(v)

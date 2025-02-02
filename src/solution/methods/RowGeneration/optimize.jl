@@ -48,15 +48,15 @@ function optimize!(model::JuMP.Model, method::RowGeneration.Method)::Nothing
         end
 
         if method.is_gen_post_conting || method.is_gen_post_conting
-            solt = model[:statistic].time_solve_model
+            
             model_copy = build_mymodel(instance=model[:instance],formulation=Formulation(),
                 optimizer=CPLEX.Optimizer,is_pre_contingency=false, is_post_contingency=false)
             JuMP.relax_integrality(model_copy)
             JuMP.optimize!(model_copy)
 
             statistic = model[:statistic]
-            solt = statistic.time_solve_model
-            # solt.total += JuMP.solve_time(model_copy)
+            statistic.time_solve_model["total"] = 0.0
+            # statistic.time_solve_model["total"] += JuMP.solve_time(model_copy)
 
             @info "Verifying transmission limits..."
             verify_start_time = time()
@@ -121,12 +121,13 @@ function optimize!(model::JuMP.Model, method::RowGeneration.Method)::Nothing
         )
         statistic = model[:statistic]
         solt = statistic.time_solve_model
-        solt.callback["ver_consec"] = 0.0
-        solt.callback["add_consec"] = 0.0
-        solt.callback["ver_conting"] = 0.0
-        solt.callback["add_conting"] = 0.0
-        solt.callback["count_conting"] = 0
-        solt.callback["count_iter"] = 0
+        callback = statistic.others.callback
+        solt["t_ver_consec"] = 0.0
+        solt["t_add_consec"] = 0.0
+        solt["t_ver_conting"] = 0.0
+        solt["t_add_conting"] = 0.0
+        callback["count_conting"] = 0
+        callback["count_iter"] = 0
 
         # Trial: Testing flow definition before callback execution.
         global is_flow_defined = false

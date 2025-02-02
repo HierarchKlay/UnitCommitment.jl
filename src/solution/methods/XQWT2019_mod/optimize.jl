@@ -27,8 +27,10 @@ function optimize!(model::JuMP.Model, method::XQWT2019_mod.Method)::Nothing
         end
     end
     statistic = model[:statistic]
-    tcf = statistic.time_solve_model.tcf
-    tcf["ver_cont"] = 0.0
+    solt = statistic.time_solve_model
+    solt["total"] = 0.0
+    solt["t_ver_cont"] = 0.0
+    tcf = statistic.others.tcf
     tcf["count_cont"] = 0
     tcf["count_iter"] = 0
     global target_count = method.max_search_per_period
@@ -39,17 +41,8 @@ function optimize!(model::JuMP.Model, method::XQWT2019_mod.Method)::Nothing
     end
 
     while true
-        # time_elapsed = time() - initial_time
-        # time_remaining = method.time_limit - time_elapsed
-        # if time_remaining < 0
-        #     @info "Time limit exceeded"
-        #     break
-        # end
-        # @info @sprintf(
-        #     "Setting MILP time limit to %.2f seconds",
-        #     time_remaining
-        # )
-        time_remaining = 3600.0 - statistic.time_solve_model.total
+        time_elapsed = time() - initial_time
+        time_remaining = method.time_limit - time_elapsed
         if time_remaining < 0
             @info "Time limit exceeded"
             break
@@ -58,6 +51,15 @@ function optimize!(model::JuMP.Model, method::XQWT2019_mod.Method)::Nothing
             "Setting MILP time limit to %.2f seconds",
             time_remaining
         )
+        # time_remaining = 3600.0 - statistic.time_solve_model.total
+        # if time_remaining < 0
+        #     @info "Time limit exceeded"
+        #     break
+        # end
+        # @info @sprintf(
+        #     "Setting MILP time limit to %.2f seconds",
+        #     time_remaining
+        # )
 
         # When testing methods that involve callback procedures, enable this line for fairness.
         # MOI.set(model, MOI.LazyConstraintCallback(), lazyCons)
@@ -66,7 +68,7 @@ function optimize!(model::JuMP.Model, method::XQWT2019_mod.Method)::Nothing
         @info "Solving MILP..."
         JuMP.optimize!(model)
         # UnitCommitment.optimize!(model, RowGeneration.Method(is_gen_post_conting=false, is_gen_pre_conting=false))
-        statistic.time_solve_model.total += JuMP.solve_time(model)
+        solt["total"] += JuMP.solve_time(model)
         statistic.num_node += JuMP.node_count(model)
         tcf["count_iter"] += 1
         has_transmission || break
@@ -90,7 +92,7 @@ function optimize!(model::JuMP.Model, method::XQWT2019_mod.Method)::Nothing
             "Verified transmission limits in %.2f seconds",
             time_screening
         )
-        tcf["ver_cont"] += time_screening
+        tcf["t_ver_cont"] += time_screening
         violations_found = false
         for v in violations
             if !isempty(v)
