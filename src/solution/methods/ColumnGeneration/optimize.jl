@@ -15,6 +15,7 @@ function optimize!(instance::UnitCommitmentInstance, method::ColumnGeneration.Me
     gen_init_sched_time = @elapsed begin
         initial_schedules = _generate_initial_schedules(instance)
     end
+    stat.time_build_model["t_gen_init_sched"] = gen_init_sched_time
     stat.time_build_model["t_build_rmp"] += gen_init_sched_time
     
     @info "initial schedules generated"
@@ -49,14 +50,11 @@ function optimize!(instance::UnitCommitmentInstance, method::ColumnGeneration.Me
         JuMP.optimize!(rmp)    
     end
     
-
     # Debugging
     println("Objective value: $(objective_value(rmp))")
-
-    
-
-
-
+    stat.obj = objective_value(rmp)
+    stat.gap = relative_gap(rmp)
+    stat.num_node = node_count(rmp)
     return stat
 end
 

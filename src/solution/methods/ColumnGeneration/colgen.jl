@@ -26,6 +26,10 @@ function _column_generation(
         tsm["t_solve_rmp"] = 0.0
         tsm["t_solve_sp"] = 0.0
         cg = stat.others.cg
+        cg["ts_solve_rmp"] = Float64[]
+        cg["ts_solve_sp"] = Float64[]
+        cg["reduced_costs"] = Float64[]
+        cg["list_count_schedules"] = Int[]
         
         while true 
             iteration += 1
@@ -34,9 +38,11 @@ function _column_generation(
             # end
 
             # Solve the RMP
-            tsm["t_solve_rmp"] += @elapsed begin
+            time_rmp = @elapsed begin
                 JuMP.optimize!(rmp)
             end
+            tsm["t_solve_rmp"] += time_rmp
+            push!(cg["ts_solve_rmp"], time_rmp)
 
             print_step = 5
             if iteration % print_step == 1
@@ -67,15 +73,18 @@ function _column_generation(
             # for schedule in initial_schedules
             #     println("Before:initial_schedules: ", schedule.name)
             # end
-            tsm["t_solve_sp"] += @elapsed begin
+            time_sp = @elapsed begin
                 new_schedules, reduced_costs = _solve_subproblems(instance, dual_values, subproblems, initial_schedules)
             end
+            tsm["t_solve_sp"] += time_sp
+            push!(cg["ts_solve_sp"], time_sp)
             # if iteration % print_step == 1
             #     min_redcost = minimum(values(reduced_costs))
             #     println("Minimum reduced cost: ", min_redcost)
             # end
             min_redcost = minimum(values(reduced_costs))
             println("Minimum reduced cost: ", min_redcost)
+            push!(cg["reduced_costs"], min_redcost)
            
             if all(reduced_cost -> reduced_cost >= -1e-6, values(reduced_costs))
                 cg["count_CG_iters"] = iteration
@@ -91,11 +100,13 @@ function _column_generation(
             # end
 
             # Update RMP with new columns
+            num_new_schedules = 0
             tbm["t_build_rmp"] += @elapsed begin
                 for schedule in new_schedules
                     if schedule !== nothing && reduced_costs[schedule.unit.name] < -1e-6
                         # println("add new column: ", schedule.name)
                         push!(initial_schedules, schedule)
+                        num_new_schedules += 1
                         θ[schedule.name] = @variable(rmp, lower_bound = 0, base_name="theta[$(schedule.name)]")
                         C, U, SU, SD, N = _compute_coefficients(instance, schedule)
                         coeffs[schedule.name] = Dict(:C => C, :U => U, :SU => SU, :SD => SD, :N => N)
@@ -126,6 +137,7 @@ function _column_generation(
                     end
                 end
             end
+            push!(cg["list_count_schedules"], num_new_schedules)
            
             # for schedule in initial_schedules
             #     println("After:initial_schedules: ", schedule.name)

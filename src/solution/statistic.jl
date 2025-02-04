@@ -55,7 +55,7 @@ end
 mutable struct SolveStat
     callback::OrderedDict{AbstractString, Union{Float64, Int}}
     tcf::OrderedDict{AbstractString, Union{Float64, Int}}
-    cg::OrderedDict{AbstractString, Union{Float64, Int}}
+    cg::OrderedDict{AbstractString, Any}
 
     SolveStat() = new(
         OrderedDict{AbstractString, Union{Float64, Int}}(),
