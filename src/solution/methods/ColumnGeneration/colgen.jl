@@ -415,7 +415,7 @@ function _initialize_subproblems(
             var_switch_on[t] = @variable(model, binary=true, base_name="var_switch_on[$t]")
             var_switch_off[t] = @variable(model, binary=true, base_name="var_switch_off[$t]")
             if g.must_run[t]
-                set_upper_bound(var_is_on[t], 1)
+                set_lower_bound(var_is_on[t], 1)
             end
         end
 
