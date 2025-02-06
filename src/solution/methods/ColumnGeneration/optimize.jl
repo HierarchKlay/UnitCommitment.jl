@@ -7,6 +7,8 @@ function optimize!(instance::UnitCommitmentInstance, method::ColumnGeneration.Me
     sub_optimizer = _setup_user_optimizer(method.sub_params.solver, 0, method.sub_params.gap_limit)
     # @info "optimizer setup done"
     method.statistic = UnitCommitment.Statistic()
+    ins_param = _rare_instance_check(instance)
+    statistic.ins_info = _memorize_ins_info(ins_param)
     stat = method.statistic
     stat.method = method
     stat.time_build_model["t_build_rmp"] = 0.0

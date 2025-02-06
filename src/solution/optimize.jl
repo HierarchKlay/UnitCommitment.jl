@@ -31,9 +31,10 @@ function optimize!(model::JuMP.Model;
 end
 
 # solve the security constrained unit commitment problem directly
-function direct_optimize!(model::JuMP.Model)::Nothing
-    model[:statistic].method = DirectSolve.Method()
-    return UnitCommitment.optimize!(model, DirectSolve.Method())
+function direct_optimize!(model::JuMP.Model; time_limit=7200.0, gap=1e-3)::Nothing
+    method = DirectSolve.Method(time_limit=time_limit, gap_limit=gap)
+    model[:statistic].method = method
+    return UnitCommitment.optimize!(model, method)
 end
 
 # solve the security constrained unit commitment problem with SLCF method

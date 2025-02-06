@@ -60,13 +60,14 @@ mutable struct SolveStat
     SolveStat() = new(
         OrderedDict{AbstractString, Union{Float64, Int}}(),
         OrderedDict{AbstractString, Union{Float64, Int}}(),
-        OrderedDict{AbstractString, Union{Float64, Int}}(),
+        OrderedDict{AbstractString, Any}(),
     )
 end
 
 mutable struct Statistic
     method::Union{SolutionMethod, Nothing}
     time_build_model::OrderedDict{AbstractString, Float64}
+    ins_info::Vector{AbstractString}
     time_solve_model::OrderedDict{AbstractString, Float64}
     num_node::Union{Int, Float64}
     obj::Float64
@@ -76,10 +77,11 @@ mutable struct Statistic
     Statistic() = new(
         nothing,
         OrderedDict{AbstractString, Float64}(),
+        [],
         OrderedDict{AbstractString, Float64}(),
-        0,
-        0,
-        0,
+        0.0,
+        0.0,
+        0.0,
         SolveStat(),
     )
 
