@@ -62,12 +62,24 @@ end
 
 function CG_optimize!(;
     instance::UnitCommitmentInstance,
-    mas_optimizer = nothing, 
+    mas_optimizer = nothing,
+    mas_time_limit = 7200.0,
+    mas_gap = 1e-3, 
     sub_optimizer = nothing,  
+    sub_time_limit = 7200.0,
+    sub_gap = 1e-3,
 )
     method = ColumnGeneration.Method(
-        master_params=ColumnGeneration.MasterParams(solver=mas_optimizer),
-        sub_params=ColumnGeneration.SubParams(solver=sub_optimizer)
+        master_params=ColumnGeneration.MasterParams(
+            time_limit=mas_time_limit,
+            gap_limit=mas_gap,
+            solver=mas_optimizer
+            ),
+        sub_params=ColumnGeneration.SubParams(
+            time_limit=sub_time_limit,
+            gap_limit=sub_gap,
+            solver=sub_optimizer,
+            )
     )
     return UnitCommitment.optimize!(instance, method)
 end

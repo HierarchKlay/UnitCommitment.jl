@@ -3,12 +3,12 @@ using Base.Threads
 
 function optimize!(instance::UnitCommitmentInstance, method::ColumnGeneration.Method)
     # Set gap and turn off output
-    master_optimizer = _setup_user_optimizer(method.master_params.solver, 0, method.master_params.gap_limit)
-    sub_optimizer = _setup_user_optimizer(method.sub_params.solver, 0, method.sub_params.gap_limit)
+    master_optimizer = _setup_user_optimizer(method.master_params.solver, 0, method.master_params.time_limit, method.master_params.gap_limit)
+    sub_optimizer = _setup_user_optimizer(method.sub_params.solver, 0, method.sub_params.time_limit, method.sub_params.gap_limit)
     # @info "optimizer setup done"
     method.statistic = UnitCommitment.Statistic()
     ins_param = _rare_instance_check(instance)
-    statistic.ins_info = _memorize_ins_info(ins_param)
+    method.statistic.ins_info = _memorize_ins_info(ins_param)
     stat = method.statistic
     stat.method = method
     stat.time_build_model["t_build_rmp"] = 0.0
@@ -45,7 +45,7 @@ function optimize!(instance::UnitCommitmentInstance, method::ColumnGeneration.Me
 
     # Enable output
     #TODO: absorb the following code into _setup_user_optimizer
-    LNS_optimizer = _setup_user_optimizer(method.master_params.solver, 1, 1e-4)
+    LNS_optimizer = _setup_user_optimizer(method.master_params.solver, 1, 7200, 1e-4)
     set_time_limit_sec(rmp, 900.0)
     set_optimizer(rmp, LNS_optimizer)
     stat.time_solve_model["t_solve_mip"] = @elapsed begin
@@ -116,17 +116,19 @@ function _count_schedule_index(
 end
 
 # Create an optimizer according to the params
-function _setup_user_optimizer(solver, is_output, gap)
+function _setup_user_optimizer(solver, is_output, time_limit, gap)
     if occursin("CPLEX", string(solver))
         return optimizer_with_attributes(
         solver,
-        "CPX_PARAM_SCRIND" => 0,
+        "CPX_PARAM_SCRIND" => is_output,
+        "CPX_PARAM_TILIM" => time_limit,
         "CPX_PARAM_EPGAP" => gap,
         )
     elseif occursin("Gurobi", string(solver))
         return optimizer_with_attributes(
         solver,
-        "OutputFlag" => 0,
+        "OutputFlag" => is_output,
+        "TimeLimit" => time_limit,
         "MIPGap" => gap,
         )
     else

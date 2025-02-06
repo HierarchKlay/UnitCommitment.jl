@@ -36,7 +36,17 @@ function _column_generation(
             # if iteration > 10
             #     break
             # end
-
+            if iteration > 1
+                # update timelimit for the RMP
+                if time_limit_sec(rmp) - cg["ts_solve_rmp"][end] >= 1
+                    set_time_limit_sec(rmp, time_limit_sec(rmp) - cg["ts_solve_rmp"][end])
+                else
+                    cg["count_CG_iters"] = iteration
+                    cg["count_schedules"] = length(initial_schedules)
+                    @info "Terminate the column generation algorithm due to time limit of RMP"
+                    break
+                end
+            end
             # Solve the RMP
             time_rmp = @elapsed begin
                 JuMP.optimize!(rmp)
@@ -73,6 +83,20 @@ function _column_generation(
             # for schedule in initial_schedules
             #     println("Before:initial_schedules: ", schedule.name)
             # end
+            if iteration > 1
+                # update timelimit for the subproblems
+                for sp in values(subproblems)
+                    if time_limit_sec(sp) - cg["ts_solve_sp"][end] >= 1
+                        set_time_limit_sec(sp, time_limit_sec(sp) - cg["ts_solve_sp"][end])
+                    else
+                        cg["count_CG_iters"] = iteration
+                        cg["count_schedules"] = length(initial_schedules)
+                        @info "Terminate the column generation algorithm due to time limit of subproblems"
+                        break
+                    end
+                end
+            end
+
             time_sp = @elapsed begin
                 new_schedules, reduced_costs = _solve_subproblems(instance, dual_values, subproblems, initial_schedules)
             end
