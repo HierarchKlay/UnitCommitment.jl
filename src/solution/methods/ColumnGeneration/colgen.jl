@@ -66,6 +66,12 @@ function _column_generation(
             if termination_status(rmp) != MOI.OPTIMAL
                 @warn "RMP in iteration $(iteration) is not solved to optimal!"
                 println("termination_status = $(termination_status(rmp))")
+                if termination_status(rmp) == MOI.TIME_LIMIT
+                    cg["count_CG_iters"] = iteration
+                    cg["count_schedules"] = length(initial_schedules)
+                    @info "Terminate the column generation algorithm due to time limit of RMP"
+                    break
+                end
             end
             
             # if termination_status(rmp) == MOI.INFEASIBLE
