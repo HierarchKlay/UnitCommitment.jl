@@ -9,6 +9,8 @@ function _column_generation(
     is_aggr_θ::Bool,
     stat,
 )
+    num_threads = Threads.nthreads()
+    println("Using $num_threads threads for parallel subproblem solving")
     if !is_aggr_θ
         # Initialize the RMP
         tbm = stat.time_build_model
@@ -432,8 +434,12 @@ function _initialize_subproblems(
 
     # Initialize the subproblems
     subproblems = Dict{String, JuMP.Model}()
+    num_threads = Threads.nthreads()
+    thread_local_dicts = [Dict{String, JuMP.Model}() for _ in 1:num_threads]
     @threads for g in sc.thermal_units
-        model = subproblems[g.name] = Model(sub_optimizer)
+        tid = Threads.threadid()
+        model = Model(sub_optimizer)
+        thread_local_dicts[tid][g.name] = model
 
         # Define binary variables
         var_is_on = _init(model, :var_is_on)
@@ -580,7 +586,7 @@ function _initialize_subproblems(
             slack_β[1] == -1
         )
     end
-    
+    subproblems = merge(merge, thread_local_dicts...)
 
     return subproblems
 end
@@ -601,8 +607,11 @@ function _solve_subproblems(
     new_schedules = Vector{Union{Nothing, _Schedule}}(nothing, length(sc.thermal_units))
 
     thermal_units_enumerated = collect(enumerate(sc.thermal_units))
+    num_threads = Threads.nthreads()
+    thread_local_redcosts = [Dict{String, Float64}() for _ in 1:num_threads]
     # println("Entering the parallel loop")
     @threads for (i, g) in thermal_units_enumerated
+        tid = Threads.threadid()
         gn = g.name
         # get dual values of each unit
         unit_λ = Dict(t => λ[gn, t] for t in 1:T if (gn, t) in keys(λ))
@@ -652,7 +661,8 @@ function _solve_subproblems(
                 if !_is_schedule_exist(initial_schedules, schedule)
                     # if the schedule does not exist and the reduced cost is negative
                     new_schedules[i] = schedule
-                    reduced_costs[g.name] = reduced_cost
+                    # reduced_costs[g.name] = reduced_cost
+                    thread_local_redcosts[tid][g.name] = reduced_cost
                 else
                     new_schedules[i] = nothing
                     #TODO: Check if error should be throw out
@@ -660,7 +670,8 @@ function _solve_subproblems(
                 end
             else
                 new_schedules[i] = nothing
-                reduced_costs[g.name] = reduced_cost
+                # reduced_costs[g.name] = reduced_cost
+                thread_local_redcosts[tid][g.name] = reduced_cost
                 # println("All schedules of unit $(g.name) satisfy optimal conditions")
             end
             # if !_is_schedule_exist(initial_schedules, schedule) && reduced_cost <= -1e-6
@@ -678,10 +689,12 @@ function _solve_subproblems(
             # println("Subproblem for $(g.name) is not solved to optimality")
             error("Subproblem for $(g.name) is not solved to optimality")
             println("Termination status: ", termination_status(sp))
-            reduced_costs[g.name] = -Inf
+            # reduced_costs[g.name] = -Inf
+            thread_local_redcosts[tid][g.name] = -Inf
         end    
     end
 
+    reduced_costs = merge(merge, thread_local_redcosts...)
     return new_schedules, reduced_costs
 
 end
