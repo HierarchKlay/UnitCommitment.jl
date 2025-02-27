@@ -12,10 +12,12 @@ function optimize!(instance::UnitCommitmentInstance, method::ColumnGeneration.Me
     stat = method.statistic
     stat.method = method
     stat.time_build_model["t_build_rmp"] = 0.0
+    stat.others.cg["schedule_solutions"] = OrderedDict()
     # @info "statistic setup done"
     # Generate initial schedules
+    can_init_on = ins_param[6]
     gen_init_sched_time = @elapsed begin
-        initial_schedules = _generate_initial_schedules(instance)
+        initial_schedules = _generate_initial_schedules(instance, can_init_on)
     end
     stat.time_build_model["t_gen_init_sched"] = gen_init_sched_time
     stat.time_build_model["t_build_rmp"] += gen_init_sched_time
@@ -30,7 +32,7 @@ function optimize!(instance::UnitCommitmentInstance, method::ColumnGeneration.Me
     # Dubugging
     # println("# of units: $(length(instance.scenarios[1].thermal_units))")
     # println("# of schedules: $(length(final_schedules))")
-    # println("Objective value: $(objective_value(rmp))")
+    println("final RMP objective value: $(objective_value(rmp))")
     # println("θ: $(θ)")
     # for g in instance.scenarios[1].thermal_units
     #     sn = "$(g.name)_1"
@@ -54,25 +56,57 @@ function optimize!(instance::UnitCommitmentInstance, method::ColumnGeneration.Me
     
     # Debugging
     println("Objective value: $(objective_value(rmp))")
+    for (sn, var) in θ
+        if value(var) > 0.5
+            for schedule in final_schedules
+                if schedule.name == sn
+                    # println("$(sn): $(schedule.w)")
+                    # println("value: $(value(var))")
+                    stat.others.cg["schedule_solutions"][schedule.unit.name] = schedule.w
+                end
+            end
+        end
+    end
     stat.obj = objective_value(rmp)
     stat.gap = relative_gap(rmp)
     stat.num_node = node_count(rmp)
-    return stat
+    return stat, rmp
 end
 
 # Generate initial schedules for RMP
 function _generate_initial_schedules(
     instance::UnitCommitmentInstance,
+    can_init_on::Bool,
 )::Vector{_Schedule}
     T = instance.time
     initial_schedules = Vector{_Schedule}()
-
-    # Generate initial schedule with all generators on for all time periods
-    for unit in instance.scenarios[1].thermal_units
-        w = ones(Int, T)
-        is_on, switch_on, switch_off = _generate_state_from_schedule(instance, unit, w)
-        name = "$(unit.name)_1"
-        push!(initial_schedules, _Schedule(name, unit, w, is_on, switch_on, switch_off))
+    
+    if can_init_on
+        # Generate initial schedule with all generators on for all time periods
+        for unit in instance.scenarios[1].thermal_units
+            w = ones(Int, T)
+            is_on, switch_on, switch_off = _generate_state_from_schedule(instance, unit, w)
+            name = "$(unit.name)_1"
+            push!(initial_schedules, _Schedule(name, unit, w, is_on, switch_on, switch_off))
+            # w = zeros(Int, T)
+            # is_on, switch_on, switch_off = _generate_state_from_schedule(instance, unit, w)
+            # name = "$(unit.name)_2"
+            # push!(initial_schedules, _Schedule(name, unit, w, is_on, switch_on, switch_off))
+        end
+    else
+        # Generate initial schedule with all generators on for all time periods permitted by the initial status and min down time
+        for unit in instance.scenarios[1].thermal_units
+            w = ones(Int, T)
+            if unit.initial_status < 0 
+                # If the initial status is off, the generator shall be off until the min down time is satisfied
+                for t in 1:(unit.min_downtime+unit.initial_status) 
+                    w[t] = 0
+                end
+            end
+            is_on, switch_on, switch_off = _generate_state_from_schedule(instance, unit, w)
+            name = "$(unit.name)_1"
+            push!(initial_schedules, _Schedule(name, unit, w, is_on, switch_on, switch_off))
+        end
     end
 
     return initial_schedules

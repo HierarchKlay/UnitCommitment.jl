@@ -30,8 +30,12 @@ function _column_generation(
         cg = stat.others.cg
         cg["ts_solve_rmp"] = Float64[]
         cg["ts_solve_sp"] = Float64[]
-        cg["reduced_costs"] = Float64[]
+        cg["list_min_reduced_costs"] = Float64[]
         cg["list_count_schedules"] = Int[]
+        cg["list_values_theta"] = Vector{Any}()
+        # cg["theta_redcosts"] = Vector{Any}()
+        cg["list_dual_values"] = Vector{Any}()
+        cg["final_rmp_solution"] = OrderedDict()
         
         while true 
             iteration += 1
@@ -55,6 +59,14 @@ function _column_generation(
             end
             tsm["t_solve_rmp"] += time_rmp
             push!(cg["ts_solve_rmp"], time_rmp)
+            schedule_stats = OrderedDict{String, OrderedDict{Tuple{Int,Vararg{Int}}, Float64}}()
+            for schedule in initial_schedules
+                if !haskey(schedule_stats, schedule.unit.name)
+                    schedule_stats[schedule.unit.name] = OrderedDict()
+                end
+                schedule_stats[schedule.unit.name][Tuple(schedule.is_on)] = value(θ[schedule.name])
+            end
+            push!(cg["list_values_theta"], schedule_stats)
 
             print_step = 5
             if iteration % print_step == 1
@@ -105,22 +117,46 @@ function _column_generation(
                 end
             end
 
+            push!(cg["list_dual_values"], dual_values)
             time_sp = @elapsed begin
                 new_schedules, reduced_costs = _solve_subproblems(instance, dual_values, subproblems, initial_schedules)
             end
             tsm["t_solve_sp"] += time_sp
             push!(cg["ts_solve_sp"], time_sp)
+            # if check_schedules !== nothing
+            #     push!(cg["theta_redcosts"], theta_redcost)
+            # end
             # if iteration % print_step == 1
             #     min_redcost = minimum(values(reduced_costs))
             #     println("Minimum reduced cost: ", min_redcost)
             # end
             min_redcost = minimum(values(reduced_costs))
             println("Minimum reduced cost: ", min_redcost)
-            push!(cg["reduced_costs"], min_redcost)
+            push!(cg["list_min_reduced_costs"], min_redcost)
            
             if all(reduced_cost -> reduced_cost >= -1e-6, values(reduced_costs))
                 cg["count_CG_iters"] = iteration
                 cg["count_schedules"] = length(initial_schedules)
+                # record values of continuous variables in final rmp
+                pab = cg["final_rmp_solution"]["prod_above"] = OrderedDict()
+                spd = cg["final_rmp_solution"]["segprod"] = OrderedDict()
+                rsr = cg["final_rmp_solution"]["reserve"] = OrderedDict()
+                sc = instance.scenarios[1]
+                T = instance.time
+                for g in sc.thermal_units
+                    for t in 1:T
+                        for k in 1:length(g.cost_segments)
+                            spd[g.name, t, k] = value(rmp[:segprod][g.name, t, k])
+                        end
+                        pab[g.name, t] = value(rmp[:prod_above][g.name, t])
+                    end
+                    for r in g.reserves
+                        r.type == "spinning" || continue
+                        for t in 1:T
+                            rsr[r.name, g.name, t] = value(rmp[:reserve][r.name, g.name, t])
+                        end
+                    end
+                end
                 @info "Terminate the column generation algorithm"
                 break
             end
@@ -140,13 +176,14 @@ function _column_generation(
                         push!(initial_schedules, schedule)
                         num_new_schedules += 1
                         θ[schedule.name] = @variable(rmp, lower_bound = 0, base_name="theta[$(schedule.name)]")
-                        C, U, SU, SD, N = _compute_coefficients(instance, schedule)
-                        coeffs[schedule.name] = Dict(:C => C, :U => U, :SU => SU, :SD => SD, :N => N)
+                        C, V, U, SU, SD, N = _compute_coefficients(instance, schedule)
+                        coeffs[schedule.name] = Dict(:C => C, :V => V, :U => U, :SU => SU, :SD => SD, :N => N)
 
                         # Update the objective function
                         set_objective_coefficient(rmp, θ[schedule.name], C)
 
                         # Update the constraints with θ
+                        eq_segprod_limit = rmp[:eq_segprod_limit]
                         eq_prod_limit = rmp[:eq_prod_limit]
                         eq_startup_limit = rmp[:eq_startup_limit]
                         eq_shutdown_limit = rmp[:eq_shutdown_limit]
@@ -158,6 +195,9 @@ function _column_generation(
                         end
 
                         for t in 1:instance.time
+                            for k in 1:length(schedule.unit.cost_segments)
+                                set_normalized_coefficient(eq_segprod_limit[schedule.unit.name, t, k], θ[schedule.name], V[t,k])
+                            end
                             set_normalized_coefficient(eq_prod_limit[schedule.unit.name, t], θ[schedule.name], U[t])
                             set_normalized_coefficient(eq_startup_limit[schedule.unit.name, t], θ[schedule.name], SU[t])
                             if t < instance.time
@@ -220,11 +260,11 @@ function _initialize_rmp(
         θ[schedule.name] = @variable(model, lower_bound = 0, base_name="theta[$(schedule.name)]")
     end
 
-    coeffs = Dict{String, Dict{Symbol, Union{Vector{Float64},Float64}}}()
+    coeffs = Dict{String, Dict{Symbol, Any}}()
     # Compute coefficients for initial schedules
     for schedule in initial_schedules
-        C, U, SU, SD, N = _compute_coefficients(instance, schedule)
-        coeffs[schedule.name] = Dict(:C => C, :U => U, :SU => SU, :SD => SD, :N => N)
+        C, V, U, SU, SD, N = _compute_coefficients(instance, schedule)
+        coeffs[schedule.name] = Dict(:C => C, :V => V, :U => U, :SU => SU, :SD => SD, :N => N)
     end
     
     # Define objective function
@@ -288,9 +328,16 @@ function _initialize_rmp(
                 # )
 
                 # original inequality constraint
+                # eq_segprod_limit[g.name, t, k] = @constraint(
+                #     model,
+                #     -segprod[g.name, t, k] >= -g.cost_segments[k].mw[t]
+                # )
                 eq_segprod_limit[g.name, t, k] = @constraint(
                     model,
-                    -segprod[g.name, t, k] >= -g.cost_segments[k].mw[t]
+                    -segprod[g.name, t, k] >= -sum(
+                        coeffs[schedule.name][:V][t,k] * θ[schedule.name] for
+                        schedule in initial_schedules if schedule.unit == g
+                    )
                 )
             end
 
@@ -456,6 +503,7 @@ function _initialize_subproblems(
         end
 
         # Define continuous variables
+        slack_γ = _init(model, :slack_γ)
         slack_λ = _init(model, :slack_λ)
         slack_μ_up = _init(model, :slack_μ_up)
         slack_μ_down = _init(model, :slack_μ_down)
@@ -463,6 +511,9 @@ function _initialize_subproblems(
         slack_β = _init(model, :slack_β)
 
         for t in 1:T
+            for k in 1:length(g.cost_segments)
+                slack_γ[t, k] = @variable(model, base_name="slack_gamma[$t,$k]")
+            end
             slack_λ[t] = @variable(model, base_name="slack_lambda[$t]")
             slack_μ_up[t] = @variable(model, base_name="slack_mu_up[$t]")
             if t < T
@@ -482,6 +533,7 @@ function _initialize_subproblems(
             sum(var_switch_on[t] * g.startup_categories[1].cost for t in 1:T) 
             + sum(var_is_on[t] * g.min_power_cost[t] for t in 1:T)
             - (
+                sum(slack_γ[t, k] * 1 for t in 1:T, k in 1:length(g.cost_segments)) +
                 sum(slack_λ[t] * 1 for t in 1:T) +
                 sum(slack_μ_up[t] * 1 for t in 1:T) +
                 sum(slack_μ_down[t] * 1 for t in 1:T-1) + 
@@ -546,12 +598,19 @@ function _initialize_subproblems(
         end
 
         # constraints for the dual variables
+        eq_def_γ = _init(model, :eq_def_γ)
         eq_def_λ = _init(model, :eq_def_λ)
         eq_def_μ_up = _init(model, :eq_def_μ_up)
         eq_def_μ_down = _init(model, :eq_def_μ_down)
         eq_def_α = _init(model, :eq_def_α)
         eq_def_β = _init(model, :eq_def_β)
         for t in 1:T
+            for k in 1:length(g.cost_segments)
+                eq_def_γ[t, k] = @constraint(
+                    model,
+                    slack_γ[t, k] == var_is_on[t] * g.cost_segments[k].mw[t]
+                )
+            end
             power_diff = max(g.max_power[t], 0.0) - max(g.min_power[t], 0.0)
             if power_diff < 1e-7
                 power_diff = 0.0
@@ -594,14 +653,14 @@ end
 # Solve the subproblems
 function _solve_subproblems(
     instance::UnitCommitmentInstance,
-    dual_values::Tuple{Dict, Dict, Dict, Dict, Dict},
+    dual_values::NTuple{6, Dict},
     subproblems::Dict{String, JuMP.Model},
     initial_schedules::Vector{_Schedule},
 )
     sc = instance.scenarios[1]
     T = instance.time
 
-    λ, μ_up, μ_down, α, β = dual_values
+    γ, λ, μ_up, μ_down, α, β = dual_values
     
     reduced_costs = Dict{String, Float64}()
     new_schedules = Vector{Union{Nothing, _Schedule}}(nothing, length(sc.thermal_units))
@@ -609,11 +668,22 @@ function _solve_subproblems(
     thermal_units_enumerated = collect(enumerate(sc.thermal_units))
     num_threads = Threads.nthreads()
     thread_local_redcosts = [Dict{String, Float64}() for _ in 1:num_threads]
+
+    schedule_stats = OrderedDict{String, OrderedDict{Tuple{Int,Vararg{Int}}, Float64}}()
+    # if check_schedules !== nothing
+    #     for schedule in check_schedules
+    #         if !haskey(schedule_stats, schedule.unit.name)
+    #             schedule_stats[schedule.unit.name] = OrderedDict()
+    #         end
+    #     end
+    # end
+    
     # println("Entering the parallel loop")
     @threads for (i, g) in thermal_units_enumerated
         tid = Threads.threadid()
         gn = g.name
         # get dual values of each unit
+        unit_γ = Dict((t, k) => γ[gn, t, k] for t in 1:T for k in 1:length(g.cost_segments) if (gn, t, k) in keys(γ))
         unit_λ = Dict(t => λ[gn, t] for t in 1:T if (gn, t) in keys(λ))
         unit_μ_up = Dict(t => μ_up[gn, t] for t in 1:T if (gn, t) in keys(μ_up))
         unit_μ_down = Dict(t => μ_down[gn, t] for t in 0:T-1 if (gn, t) in keys(μ_down))
@@ -624,17 +694,32 @@ function _solve_subproblems(
         sp = subproblems[gn]
         var_switch_on = sp[:var_switch_on]
         var_is_on = sp[:var_is_on]
+        slack_γ = sp[:slack_γ]
         slack_λ = sp[:slack_λ]
         slack_μ_up = sp[:slack_μ_up]
         slack_μ_down = sp[:slack_μ_down]
         slack_α = sp[:slack_α]
         slack_β = sp[:slack_β]
 
-        # Update the coefficients of objective function
+        # # Update the coefficients of objective function
+        # @objective(sp, Min,
+        # sum(var_switch_on[t] * g.startup_categories[1].cost for t in 1:T) 
+        # + sum(var_is_on[t] * g.min_power_cost[t] for t in 1:T)
+        # - (
+        #     sum(slack_λ[t] * unit_λ[t] for t in 1:T) +
+        #     sum(slack_μ_up[t] * unit_μ_up[t] for t in 1:T) +
+        #     sum(slack_μ_down[t] * unit_μ_down[t] for t in 1:T-1) + 
+        #     (g.initial_power > g.shutdown_limit ? slack_μ_down[0] * unit_μ_down[0] : 0) +
+        #     sum(slack_α[t] * unit_α[t] for t in 1:T) +
+        #     slack_β[1] * unit_β
+        # )
+        # )
+        # Update the coefficients of objective function (convexity constraint: equality)
         @objective(sp, Min,
         sum(var_switch_on[t] * g.startup_categories[1].cost for t in 1:T) 
         + sum(var_is_on[t] * g.min_power_cost[t] for t in 1:T)
         - (
+            sum(slack_γ[t, k] * unit_γ[t,k] for t in 1:T, k in 1:length(g.cost_segments)) +
             sum(slack_λ[t] * unit_λ[t] for t in 1:T) +
             sum(slack_μ_up[t] * unit_μ_up[t] for t in 1:T) +
             sum(slack_μ_down[t] * unit_μ_down[t] for t in 1:T-1) + 
@@ -643,6 +728,52 @@ function _solve_subproblems(
             slack_β[1] * unit_β
         )
         )
+
+        # if check_schedules !== nothing
+        #     for schedule in check_schedules
+        #         if schedule.unit == g
+        #             if !haskey(schedule_stats[schedule.unit.name], Tuple(schedule.is_on))
+        #                 sγ = Vector{Float64}(undef, T, length(g.cost_segments))
+        #                 sλ = Vector{Float64}(undef, T)
+        #                 sμ_up = Vector{Float64}(undef, T)
+        #                 sμ_down = Vector{Float64}(undef, T-1)
+        #                 sα = Vector{Float64}(undef, T)
+        #                 for t in 1:T
+        #                     for k in 1:length(g.cost_segments)
+        #                         sγ[t, k] = schedule.is_on[t] * g.cost_segments[k].mw[t]
+        #                     end
+        #                     power_diff = max(g.max_power[t], 0.0) - max(g.min_power[t], 0.0)
+        #                     if power_diff < 1e-7
+        #                         power_diff = 0.0
+        #                     end
+        #                     sλ[t] = schedule.is_on[t] * power_diff
+        #                     sμ_up[t] = (g.max_power[t] - g.min_power[t]) * schedule.is_on[t] - max(g.max_power[t] - g.startup_limit, 0.0) * schedule.switch_on[t]
+        #                     if t < T
+        #                         sμ_down[t] = (g.max_power[t] - g.min_power[t]) * schedule.is_on[t] - max(g.max_power[t] - g.shutdown_limit, 0.0) * schedule.switch_off[t+1]
+        #                     end
+        #                     sα[t] = g.min_power[t] * schedule.is_on[t]
+        #                 end
+        #                 if g.initial_power > g.shutdown_limit
+        #                     sμ_down_0 = -1
+        #                 end
+        #                 sβ = -1
+        #                 redcost = 
+        #                 sum(schedule.switch_on[t] * g.startup_categories[1].cost for t in 1:T) +
+        #                 sum(schedule.is_on[t] * g.min_power_cost[t] for t in 1:T) -
+        #                 (
+        #                     sum(sγ[t, k] * unit_γ[t,k] for t in 1:T, k in 1:length(g.cost_segments)) +
+        #                     sum(sλ[t] * unit_λ[t] for t in 1:T) +
+        #                     sum(sμ_up[t] * unit_μ_up[t] for t in 1:T) +
+        #                     sum(sμ_down[t] * unit_μ_down[t] for t in 1:T-1) + 
+        #                     (g.initial_power > g.shutdown_limit ? sμ_down_0 * unit_μ_down[0] : 0) +
+        #                     sum(sα[t] * unit_α[t] for t in 1:T) +
+        #                     sβ * unit_β
+        #                 )
+        #                 schedule_stats[schedule.unit.name][Tuple(schedule.is_on)] = redcost
+        #             end
+        #         end
+        #     end
+        # end
        
         # Optimize the subproblem
         JuMP.optimize!(sp)
@@ -714,6 +845,13 @@ function _compute_coefficients(
         C += schedule.is_on[t] * schedule.unit.min_power_cost[t]
     end
 
+    # Compute the coefficients for eq_segprod_limit in the original formulation
+    V = zeros(T, length(schedule.unit.cost_segments))
+    for t in 1:T
+        for k in 1:length(schedule.unit.cost_segments)
+            V[t, k] = schedule.is_on[t] * schedule.unit.cost_segments[k].mw[t]
+        end
+    end
     # Compute the coefficients for eq_prod_limit in the original formulation
     U = zeros(T)
     for t in 1:T
@@ -750,7 +888,7 @@ function _compute_coefficients(
         N[t] = schedule.unit.min_power[t] * schedule.is_on[t]
     end
 
-    return (C = C, U = U, SU = SU, SD = SD, N = N)
+    return (C = C, V = V, U = U, SU = SU, SD = SD, N = N)
 end
 
 # Check if the schedule exists in the list
@@ -767,6 +905,7 @@ function _get_dual_values(
     model::JuMP.Model,
 )
     # Initialize the dual values
+    γ = Dict()
     λ = Dict()
     μ_up = Dict()
     μ_down = Dict()
@@ -776,6 +915,7 @@ function _get_dual_values(
     # Get the instance information and the constraints
     sc = instance.scenarios[1]
     T = instance.time
+    eq_segprod_limit = model[:eq_segprod_limit]
     eq_prod_limit = model[:eq_prod_limit]
     eq_startup_limit = model[:eq_startup_limit]
     eq_shutdown_limit = model[:eq_shutdown_limit]
@@ -788,6 +928,9 @@ function _get_dual_values(
             μ_down[g.name, 0] = dual(eq_shutdown_limit[g.name, 0])
         end
         for t in 1:T
+            for k in 1:length(g.cost_segments)
+                γ[g.name, t, k] = dual(eq_segprod_limit[g.name, t, k])
+            end
             λ[g.name, t] = dual(eq_prod_limit[g.name, t])
             μ_up[g.name, t] = dual(eq_startup_limit[g.name, t])
             if t < T
@@ -802,8 +945,9 @@ function _get_dual_values(
 
     for g in sc.thermal_units
         β[g.name] = dual(eq_convexity[g.name])
+        # println("β[$(g.name)] = ", β[g.name])
     end
 
-    return λ, μ_up, μ_down, α, β
+    return γ, λ, μ_up, μ_down, α, β
 end
 

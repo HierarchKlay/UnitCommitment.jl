@@ -117,7 +117,9 @@ end
 function build_mymodel(;
     instance::UnitCommitmentInstance,
     optimizer = nothing,
-    formulation = Formulation(),
+    formulation = Formulation(
+        pwl_costs=Gar1962.PwlCosts(),   # here we use the classic piecewise costs
+    ),
     variable_names::Bool = false,
     is_power_surplus_allowed::Bool = true,
     is_min_updown::Bool = true,
