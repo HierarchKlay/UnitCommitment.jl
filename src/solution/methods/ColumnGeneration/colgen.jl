@@ -36,6 +36,7 @@ function _column_generation(
         # cg["theta_redcosts"] = Vector{Any}()
         cg["list_dual_values"] = Vector{Any}()
         cg["final_rmp_solution"] = OrderedDict()
+        cg["list_rmp_obj"] = Float64[]
         
         while true 
             iteration += 1
@@ -67,6 +68,7 @@ function _column_generation(
                 schedule_stats[schedule.unit.name][Tuple(schedule.is_on)] = value(θ[schedule.name])
             end
             push!(cg["list_values_theta"], schedule_stats)
+            push!(cg["list_rmp_obj"], objective_value(rmp))
 
             print_step = 5
             if iteration % print_step == 1
@@ -460,12 +462,31 @@ function _initialize_rmp(
 
     ## eq_convexity
     for g in sc.thermal_units
-       eq_convexity[g.name] = @constraint(
-           model,
-           -sum(
-                θ[schedule.name] for schedule in initial_schedules if schedule.unit == g
-           ) >= -1
-       )
+        if g.initial_status > 0
+            if g.min_uptime-g.initial_status >= 0.5 || g.initial_power > g.shutdown_limit
+                # In cases above, the status of first period is forced to on, thus 0-schedule is not allowed
+                eq_convexity[g.name] = @constraint(
+                    model,
+                    -sum(
+                        θ[schedule.name] for schedule in initial_schedules if schedule.unit == g
+                    ) == -1
+                )
+            else
+                eq_convexity[g.name] = @constraint(
+                    model,
+                    -sum(
+                            θ[schedule.name] for schedule in initial_schedules if schedule.unit == g
+                    ) >= -1
+                )
+            end
+        else
+            eq_convexity[g.name] = @constraint(
+                model,
+                -sum(
+                        θ[schedule.name] for schedule in initial_schedules if schedule.unit == g
+                ) >= -1
+            )
+        end
     end
 
     return model, θ, coeffs
