@@ -151,9 +151,7 @@ function build_mymodel(;
         for sc in instance.scenarios
             @info "Building scenario $(sc.name) with " *
                   "probability $(sc.probability)"
-            if is_pre_contingency || is_post_contingency
-                _setup_transmission(formulation.transmission, sc)
-            end
+            _setup_transmission(formulation.transmission, sc)
             for l in sc.lines
                 _add_restricted_transmission_line!(model, l, formulation.transmission, sc)
             end
