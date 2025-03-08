@@ -128,6 +128,8 @@ function optimize!(model::JuMP.Model, method::RowGeneration.Method)::Nothing
         solt["t_add_conting"] = 0.0
         callback["count_conting"] = 0
         callback["count_iter"] = 0
+        callback["list_count_conting"] = Int[]
+        callback["ts_ver_conting"] = Float64[]
 
         # Trial: Testing flow definition before callback execution.
         global is_flow_defined = false

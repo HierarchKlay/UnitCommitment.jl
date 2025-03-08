@@ -80,6 +80,7 @@ function _callback_function(cb_data, isLazy, model, method)
             time_screening
             )
             solt["t_ver_conting"] += time_screening
+            push!(callback["ts_ver_conting"], time_screening)
             callback["count_iter"] += 1
 
             violations_found = false
@@ -91,6 +92,7 @@ function _callback_function(cb_data, isLazy, model, method)
 
             if violations_found
                 callback["count_conting"] += sum(length, violations)
+                push!(callback["list_count_conting"], sum(length, violations))
                 start_time = time()
                 for (i, v) in enumerate(violations)
                     if !is_flow_defined
