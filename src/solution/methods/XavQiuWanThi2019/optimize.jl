@@ -29,10 +29,14 @@ function optimize!(model::JuMP.Model, method::XavQiuWanThi2019.Method)::Nothing
     statistic = model[:statistic]
     solt = statistic.time_solve_model
     solt["total"] = 0.0
+    solt["t_solve_model"] = 0.0
     solt["t_ver_cont"] = 0.0
     tcf = statistic.others.tcf
+    tcf["ts_solve_model"] = Float64[]
+    tcf["ts_ver_cont"] = Float64[]
     tcf["count_cont"] = 0
     tcf["count_iter"] = 0
+    tcf["list_count_cont"] = Int[]
     while true
         time_elapsed = time() - initial_time
         time_remaining = method.time_limit - time_elapsed
@@ -48,7 +52,8 @@ function optimize!(model::JuMP.Model, method::XavQiuWanThi2019.Method)::Nothing
         @info "Solving MILP..."
         JuMP.optimize!(model)
         # UnitCommitment.optimize!(model, RowGeneration.Method(is_gen_post_conting=false, is_gen_pre_conting=false))
-        solt["total"] += JuMP.solve_time(model)
+        solt["t_solve_model"] += JuMP.solve_time(model)
+        push!(tcf["ts_solve_model"], JuMP.solve_time(model))
         statistic.num_node += JuMP.node_count(model)
         tcf["count_iter"] += 1
         has_transmission || break
@@ -73,6 +78,7 @@ function optimize!(model::JuMP.Model, method::XavQiuWanThi2019.Method)::Nothing
             time_screening
         )
         solt["t_ver_cont"] += time_screening
+        push!(tcf["ts_ver_cont"], time_screening)
         violations_found = false
         for v in violations
             if !isempty(v)
@@ -82,6 +88,7 @@ function optimize!(model::JuMP.Model, method::XavQiuWanThi2019.Method)::Nothing
 
         if violations_found
             tcf["count_cont"] += sum(length, violations)
+            push!(tcf["list_count_cont"], sum(length, violations))
             for (i, v) in enumerate(violations)
                 _enforce_transmission(model, v, model[:instance].scenarios[i])
             end
@@ -91,6 +98,7 @@ function optimize!(model::JuMP.Model, method::XavQiuWanThi2019.Method)::Nothing
                 large_gap = false
                 set_gap(method.gap_limit)
             else
+                solt["total"] = solt["t_solve_model"] + solt["t_ver_cont"]
                 break
             end
         end

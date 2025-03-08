@@ -31,7 +31,7 @@ function statistic(
     method::XavQiuWanThi2019.Method,
 )::Statistic    
     statistic = model[:statistic]
-    statistic.num_node = statistic.num_node / statistic.time_solve_model.tcf["count_iter"]
+    statistic.num_node = statistic.num_node / statistic.others.tcf["count_iter"]
     statistic.obj = JuMP.objective_value(model)
     statistic.gap = JuMP.relative_gap(model)
     return statistic
@@ -42,7 +42,7 @@ function statistic(
     method::XQWT2019_mod.Method,
 )::Statistic    
     statistic = model[:statistic]
-    statistic.num_node = statistic.num_node / statistic.time_solve_model.tcf["count_iter"]
+    statistic.num_node = statistic.num_node / statistic.others.tcf["count_iter"]
     statistic.obj = JuMP.objective_value(model)
     statistic.gap = JuMP.relative_gap(model)
     return statistic
@@ -53,13 +53,13 @@ function statistic(model::JuMP.Model)::Statistic
 end
 
 mutable struct SolveStat
-    callback::OrderedDict{AbstractString, Union{Float64, Int}}
-    tcf::OrderedDict{AbstractString, Union{Float64, Int}}
+    callback::OrderedDict{AbstractString, Any}
+    tcf::OrderedDict{AbstractString, Any}
     cg::OrderedDict{AbstractString, Any}
 
     SolveStat() = new(
-        OrderedDict{AbstractString, Union{Float64, Int}}(),
-        OrderedDict{AbstractString, Union{Float64, Int}}(),
+        OrderedDict{AbstractString, Any}(),
+        OrderedDict{AbstractString, Any}(),
         OrderedDict{AbstractString, Any}(),
     )
 end
