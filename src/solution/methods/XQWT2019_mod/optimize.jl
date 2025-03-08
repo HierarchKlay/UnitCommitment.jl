@@ -92,7 +92,7 @@ function optimize!(model::JuMP.Model, method::XQWT2019_mod.Method)::Nothing
             "Verified transmission limits in %.2f seconds",
             time_screening
         )
-        tcf["t_ver_cont"] += time_screening
+        solt["t_ver_cont"] += time_screening
         violations_found = false
         for v in violations
             if !isempty(v)
