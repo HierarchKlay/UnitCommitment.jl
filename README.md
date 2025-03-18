@@ -110,13 +110,6 @@ function callback_optimize!(;
   * `is_early_stopped`: Determines whether to use surrogate constraints (see `optimize!` function)
   * `max_search_per_period`: Limits the number of surrogate constraints per period
   * `max_violations_per_period`: Maximum number of violated constraints to add per time period
-* `is_root_check`: Controls whether to use LP relaxation at root node for generating violated constraints
-* `is_gen_min_time`: Determines if min up/down time constraints should be generated
-* `is_gen_pre_conting`: Controls generation of pre-contingency constraints
-* `is_gen_post_conting`: Controls generation of post-contingency constraints
-* `is_early_stopped`: Determines whether to use surrogate constraints (see `optimize!` function)
-* `max_search_per_period`: Limits the number of constraints searched per period
-* `max_violations_per_period`: Limits the number of violated constraints added per period
 
 ## Tutorial: How to Add a Local Julia Package
 
