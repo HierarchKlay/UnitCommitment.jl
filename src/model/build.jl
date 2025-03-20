@@ -117,13 +117,17 @@ end
 function build_mymodel(;
     instance::UnitCommitmentInstance,
     optimizer = nothing,
-    formulation = Formulation(),
+    formulation = Formulation(
+        pwl_costs=Gar1962.PwlCosts(),   # here we use the classic piecewise costs
+    ),
     variable_names::Bool = false,
+    is_power_surplus_allowed::Bool = true,
     is_min_updown::Bool = true,
     is_pre_contingency::Bool = true,
     is_post_contingency::Bool = false,
 )::JuMP.Model
     @info "Building modified model..."
+    ins_param = _rare_instance_check(instance)
     time_model = @elapsed begin
         model = Model()
         if optimizer !== nothing
@@ -133,6 +137,7 @@ function build_mymodel(;
         model[:instance] = instance
         statistic = UnitCommitment.Statistic()
         model[:statistic] = statistic
+        statistic.ins_info = _memorize_ins_info(ins_param)
         # assigning whether to consider reserve in the ramping constraints
         model[:RESERVES_WHEN_START_UP] = false
         model[:RESERVES_WHEN_RAMP_UP] = false
@@ -165,7 +170,7 @@ function build_mymodel(;
             # for su in sc.storage_units
             #     _add_storage_unit!(model, su, sc)
             # end
-            _add_system_wide_eqs!(model, sc)
+            _add_system_wide_eqs!(model, sc, is_power_surplus_allowed=is_power_surplus_allowed)
             if is_pre_contingency
                 time_add_pre_conting = @elapsed begin
                     _add_pre_contingency_constraints!(model, sc)
@@ -192,4 +197,104 @@ function build_mymodel(;
         _set_names!(model)
     end
     return model
+end
+
+function _rare_instance_check(
+    instance::UnitCommitmentInstance
+)
+    detected_issues = Set{String}()
+    is_commit_empty = true
+    is_must_run_empty = true
+    is_negative_penalty = true
+    is_min_power_consist = true
+    is_single_startup = true
+    can_init_on = true
+
+    for unit in instance.scenarios[1].thermal_units
+        # Check if commitment_status has any non-nothing value
+        if any(x -> x !== nothing, unit.commitment_status)
+            if "unit commitment status not empty" ∉ detected_issues
+                @info "Rare instance detected: unit commitment status is not empty"
+                push!(detected_issues, "unit commitment status not empty")
+                is_commit_empty = false
+            end
+        end
+
+        # Check if must_run contains any true value
+        if !all(!, unit.must_run)
+            if "must run not empty" ∉ detected_issues
+                @info "Rare instance detected: must run is not empty"
+                push!(detected_issues, "must run not empty")
+                is_must_run_empty = false
+            end
+        end
+
+        # Check if any reserve has a positive shortfall penalty
+        for r in unit.reserves
+            if r.shortfall_penalty > 0
+                if "positive shortfall penalty" ∉ detected_issues
+                    @info "Rare instance detected: positive shortfall penalty"
+                    push!(detected_issues, "positive shortfall penalty")
+                    is_negative_penalty = false
+                end
+            end
+        end
+
+        # Check if there is a time-variant discontinuity in min_power and max_power
+        for t in 1:instance.time - 1
+            if unit.min_power[t+1] - unit.min_power[t] > 1e-6
+                if "time-variant min power" ∉ detected_issues
+                    @info "Rare instance detected: time-variant min power"
+                    push!(detected_issues, "time-variant min power")
+                    is_min_power_consist = false
+                end
+            end
+        end
+
+        # Check if the unit has multiple startup categories
+        if length(unit.startup_categories) > 1
+            if "multiple startup categories" ∉ detected_issues
+                @info "Rare instance detected: multiple startup categories"
+                push!(detected_issues, "multiple startup categories")
+                is_single_startup = false
+            end
+        end
+
+        # Check if the state of the unit at the first period can be turned on
+        if unit.initial_status < 0 && unit.min_downtime + unit.initial_status > 0
+            if "initial status cannot be on due to min_downtime constraints" ∉ detected_issues
+                @info "Rare instance detected: initial status cannot be on due to min_downtime constraints"
+                push!(detected_issues, "initial status cannot be on due to min_downtime constraints")
+                can_init_on = false
+            end
+        end
+    end
+
+    return is_commit_empty, is_must_run_empty, is_negative_penalty, is_min_power_consist, is_single_startup, can_init_on
+end
+
+function _memorize_ins_info(ins_param)
+    is_commit_empty, is_must_run_empty, is_negative_penalty, is_min_power_consist, is_single_startup, can_init_on = ins_param
+    ins_info = []
+    if !is_commit_empty
+        push!(ins_info, "unit commitment status not empty")
+    end
+    if !is_must_run_empty
+        push!(ins_info, "must run not empty")
+    end
+    if !is_negative_penalty
+        push!(ins_info, "positive shortfall penalty")
+    end
+    if !is_min_power_consist
+        push!(ins_info, "time-variant min power")
+    end
+    if !is_single_startup
+        push!(ins_info, "multiple startup categories")
+    end
+    if !can_init_on
+        push!(ins_info, "status 1 cannot be on due to min_downtime")
+    end
+
+    return ins_info
+
 end

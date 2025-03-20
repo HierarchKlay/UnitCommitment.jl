@@ -7,7 +7,7 @@ function statistic(
     method::DirectSolve.Method,
 )::Statistic    
     statistic = model[:statistic]
-    statistic.time_solve_model.total = JuMP.solve_time(model)
+    statistic.time_solve_model["total"] = JuMP.solve_time(model)
     statistic.num_node = JuMP.node_count(model)
     statistic.obj = JuMP.objective_value(model)
     statistic.gap = JuMP.relative_gap(model)
@@ -19,7 +19,7 @@ function statistic(
     method::RowGeneration.Method,
 )::Statistic    
     statistic = model[:statistic]
-    statistic.time_solve_model.total = JuMP.solve_time(model)
+    statistic.time_solve_model["total"] = JuMP.solve_time(model)
     statistic.num_node = JuMP.node_count(model)
     statistic.obj = JuMP.objective_value(model)
     statistic.gap = JuMP.relative_gap(model)
@@ -31,7 +31,7 @@ function statistic(
     method::XavQiuWanThi2019.Method,
 )::Statistic    
     statistic = model[:statistic]
-    statistic.num_node = statistic.num_node / statistic.time_solve_model.tcf["count_iter"]
+    statistic.num_node = statistic.num_node / statistic.others.tcf["count_iter"]
     statistic.obj = JuMP.objective_value(model)
     statistic.gap = JuMP.relative_gap(model)
     return statistic
@@ -42,7 +42,7 @@ function statistic(
     method::XQWT2019_mod.Method,
 )::Statistic    
     statistic = model[:statistic]
-    statistic.num_node = statistic.num_node / statistic.time_solve_model.tcf["count_iter"]
+    statistic.num_node = statistic.num_node / statistic.others.tcf["count_iter"]
     statistic.obj = JuMP.objective_value(model)
     statistic.gap = JuMP.relative_gap(model)
     return statistic
@@ -53,29 +53,36 @@ function statistic(model::JuMP.Model)::Statistic
 end
 
 mutable struct SolveStat
-    total::Float64
-    callback::OrderedDict{AbstractString, Union{Float64, Int}}
-    tcf::OrderedDict{AbstractString, Union{Float64, Int}}
+    callback::OrderedDict{AbstractString, Any}
+    tcf::OrderedDict{AbstractString, Any}
+    cg::OrderedDict{AbstractString, Any}
+
+    SolveStat() = new(
+        OrderedDict{AbstractString, Any}(),
+        OrderedDict{AbstractString, Any}(),
+        OrderedDict{AbstractString, Any}(),
+    )
 end
 
 mutable struct Statistic
     method::Union{SolutionMethod, Nothing}
     time_build_model::OrderedDict{AbstractString, Float64}
-    time_solve_model::SolveStat
+    ins_info::Vector{AbstractString}
+    time_solve_model::OrderedDict{AbstractString, Float64}
     num_node::Union{Int, Float64}
     obj::Float64
     gap::Float64
+    others::SolveStat
     
     Statistic() = new(
         nothing,
         OrderedDict{AbstractString, Float64}(),
-        SolveStat(
-            0.0, 
-            OrderedDict{AbstractString, Union{Float64, Int}}(), 
-            OrderedDict{AbstractString, Union{Float64, Int}}(),
-        ),
-        0,
-        0,
+        [],
+        OrderedDict{AbstractString, Float64}(),
+        0.0,
+        0.0,
+        0.0,
+        SolveStat(),
     )
 
 end

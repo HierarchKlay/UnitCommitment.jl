@@ -4,9 +4,15 @@
 
 function _add_system_wide_eqs!(
     model::JuMP.Model,
-    sc::UnitCommitmentScenario,
+    sc::UnitCommitmentScenario;
+    is_power_surplus_allowed::Bool = false,
 )::Nothing
-    _add_net_injection_eqs!(model, sc)
+    if !is_power_surplus_allowed
+        _add_net_injection_eqs!(model, sc)
+    else
+        _add_net_injection_ineqs!(model, sc)
+    end
+    # _add_net_injection_eqs!(model, sc)
     _add_spinning_reserve_eqs!(model, sc)
     _add_flexiramp_reserve_eqs!(model, sc)
     return
@@ -31,6 +37,30 @@ function _add_net_injection_eqs!(
         eq_power_balance[sc.name, t] = @constraint(
             model,
             sum(net_injection[sc.name, b.name, t] for b in sc.buses) == 0
+        )
+    end
+    return
+end
+
+function _add_net_injection_ineqs!(
+    model::JuMP.Model,
+    sc::UnitCommitmentScenario,
+)::Nothing
+    T = model[:instance].time
+    net_injection = _init(model, :net_injection)
+    eq_net_injection = _init(model, :eq_net_injection)
+    eq_power_balance = _init(model, :eq_power_balance)
+    for t in 1:T, b in sc.buses
+        n = net_injection[sc.name, b.name, t] = @variable(model)
+        eq_net_injection[sc.name, b.name, t] = @constraint(
+            model,
+            -n + model[:expr_net_injection][sc.name, b.name, t] == 0
+        )
+    end
+    for t in 1:T
+        eq_power_balance[sc.name, t] = @constraint(
+            model,
+            sum(net_injection[sc.name, b.name, t] for b in sc.buses) >= 0
         )
     end
     return
