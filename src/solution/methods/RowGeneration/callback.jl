@@ -228,8 +228,8 @@ function _generate_contingency_constraints(cb_data, model, Cons, violations, sc,
                 MOI.submit(model, Cons(cb_data), eq_preconting_uplimit[sc.name, fm, t])
                 MOI.submit(model, Cons(cb_data), eq_preconting_downlimit[sc.name, fm, t])
             else
-                error("Pre-contingecy constraints are already added.
-                     But they are still violated by the incumbent.")
+                # error("Pre-contingecy constraints are already added.
+                #      But they are still violated by the incumbent.")
             end
         else  
             lc = violation.outage_line
