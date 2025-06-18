@@ -110,7 +110,7 @@ function optimize!(model::JuMP.Model;
 
 * **Purpose** : An enhanced version of the original `optimize!` function that provides control over the constraint filtering process. It offers two approaches:
 
-  * When `is_early_stopped = true`: Adds surrogate constraints based on the methodology described in [this research paper](https://kns.cnki.net/kcms2/article/abstract?v=rdiHbV4QUxbzu_3bb68Q9311pxOjEgh_ZabGH-R2qgN_NqzD2vRwG4pG8p5ReAR2Xewu90i2aOD7ZitTFvpGqWPAlxdlDjmSpAQgcK4nPTZCObS_u6GG7q7AYXxJu91qgzCECH6YsBrnfSe_t-YRxiIkyptYXzyEae4d6TMJK72rJ5Xge5IOA9MaJKHQ1915&uniplatform=NZKPT&language=CHS)
+  * When `is_early_stopped = true`: Adds surrogate constraints based on the methodology described in this [slides](https://drive.google.com/file/d/1WJkVhyu6uewVzlytElAIKDrFxdp379nY/view?usp=share_link)
   * When `is_early_stopped = false`: Uses original TCF method to add the most violated constraints
 * **Parameters** :
 
@@ -169,7 +169,7 @@ function CG_optimize!(;
 
   At this stage, **some acceleration techniques have not yet been incorporated**, making it an initial implementation.
 
-  *(For more details, refer to these* [*slides*](https://drive.google.com/file/d/1bwNOm-ynLH99NTnZHIUqdhH-362Y-7ce/view?usp=share_link)*).*
+  *(For more details, refer to this* [*slides*](https://drive.google.com/file/d/1bwNOm-ynLH99NTnZHIUqdhH-362Y-7ce/view?usp=share_link)*).*
 
 * **Parameters** :
 
