@@ -35,6 +35,7 @@ This package is a modification of the original [UnitCommitment.jl](https://githu
 - However, it provides flexibility by allowing the inclusion or exclusion of:
   - **Pre-contingency and post-contingency security constraints**
   - **Min up/down time constraints** through specific parameters.
+
 * **New Feature**: **Rare Instance Check**
   * The function `_rare_instance_check` analyzes and detects rare characteristics in unit commitment instances, including:
     * Presence of predefined commitment statuses
@@ -54,6 +55,7 @@ This package is a modification of the original [UnitCommitment.jl](https://githu
   function statistic(model::JuMP.Model)::Statistic
   ```
 * **Purpose** : This function collects and returns comprehensive solution statistics from the model, including:
+
   * Build time metrics
   * Solve time details
   * Number of nodes processed
@@ -78,7 +80,6 @@ This package is a modification of the original [UnitCommitment.jl](https://githu
   )
   ```
 * **Purpose** : The `generate_instance` function allows users to generate synthetic unit commitment instances with customizable parameters. The generated instances are saved as JSON files in the specified folder, following the same format as benchmark instances.
-
 * **Note**: The generation of grid network topology is **not yet supported**.
 
 ## New Methods
@@ -125,7 +126,7 @@ function optimize!(model::JuMP.Model;
 ```julia
 function callback_optimize!(;
     model::JuMP.Model,
-    is_root_check::Bool = false,	
+    is_root_check::Bool = false,
     is_gen_min_time::Bool = false,
     is_gen_pre_conting::Bool = true,
     is_gen_post_conting::Bool = true,
@@ -162,15 +163,14 @@ function CG_optimize!(;
 )
 ```
 
-* **Purpose** : Prototype of the **two-stage column generation-based heuristic** for solving the **unit commitment**. 
+* **Purpose** : Prototype of the **two-stage column generation-based heuristic** for solving the **unit commitment**.
 
   * Stage 1: The **column generation method** is employed to solve the **LP relaxation** of the extended formulation, iteratively refining the solution by generating promising columns.
   * Stage 2: The binary variables are **fixed**, and the problem is solved as an **integer program** to obtain a feasible commitment schedule.
 
   At this stage, **some acceleration techniques have not yet been incorporated**, making it an initial implementation.
 
-  *(For more details, refer to this* [*slides*](https://drive.google.com/file/d/1bwNOm-ynLH99NTnZHIUqdhH-362Y-7ce/view?usp=share_link)*).*
-
+  *(For more details, refer to this [paper](https://ieeexplore.ieee.org/abstract/document/10991931) and this* [*slides*](https://drive.google.com/file/d/1bwNOm-ynLH99NTnZHIUqdhH-362Y-7ce/view?usp=share_link)*).*
 * **Parameters** :
 
   * `mas_optimizer`: The optimizer for the stage 1
@@ -180,7 +180,7 @@ function CG_optimize!(;
   * `sub_time_limit`: Time limit for the stage 2
   * `sub_gap`: Relative gap for  the stage 2
 
-**Note**: To fully exploit the parallel capabilities of the methods above, we recommend enabling **multi-threading** when running the Julia script. This can be done by launching Julia with parameter like 
+**Note**: To fully exploit the parallel capabilities of the methods above, we recommend enabling **multi-threading** when running the Julia script. This can be done by launching Julia with parameter like
 
 ```sh
 julia -t auto your_script.jl
